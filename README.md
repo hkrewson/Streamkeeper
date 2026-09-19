@@ -79,6 +79,9 @@ The compose file mounts media read-only and application data read-write.
 On Synology, grant UID 1026 write access to the host folder mapped to `/data`
 and read access to the library mapped to `/media`. The verified container
 behavior and mount contract are recorded in `docs/container-validation.md`.
+For Container Manager, use the image-only `compose.synology.yaml` and follow
+the update, backup, restore, and rollback guide in
+`docs/synology-deployment.md`.
 
 The web application provides Library, Scans, Findings, Reports, and Settings,
 plus JSON APIs under `/api`. It intentionally has no conversion-execution API.

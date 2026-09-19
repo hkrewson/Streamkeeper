@@ -24,6 +24,11 @@ Monday so newly disclosed vulnerabilities are detected between releases.
 
 ## 2. Synology deployment hardening
 
+Status: the image-only Compose example, explicit pull policy, and documented
+permission, update, backup, restore, and rollback procedures are implemented.
+Restart and database-reuse behavior is covered locally; platform confirmation
+on both an AMD64 and ARM64 Synology remains pending.
+
 - Maintain an image-only Synology Compose example with explicit pull behavior.
 - Document initial data-directory permissions, updates, backups, and recovery.
 - Test startup with bind mounts, restarts, image replacement, and an existing

@@ -59,6 +59,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
+      - name: Validate deployment manifests
+        run: |
+          docker compose -f compose.yaml config --quiet
+          docker compose --env-file synology.env.example \
+            -f compose.synology.yaml config --quiet
+
       - name: Build test image
         uses: docker/build-push-action@v7
         with:

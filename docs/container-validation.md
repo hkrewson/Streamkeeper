@@ -14,6 +14,9 @@ Python base packages for x86-64 Synology models.
 - A write attempt through the `/media` mount is rejected.
 - FFprobe is installed in the runtime image.
 - `/health` responds successfully and Docker reports the container as healthy.
+- The image-only Synology Compose file expands without a local build context.
+- Replacing the container while reusing its named data volume preserves the
+  initialized SQLite database and returns to a healthy state.
 - The temporary verification container was removed after the check.
 
 ## Synology volume permissions

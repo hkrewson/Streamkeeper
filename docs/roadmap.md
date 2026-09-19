@@ -6,6 +6,12 @@ behind the established safety gates.
 
 ## 1. Continuous integration gates
 
+Status: implemented for tests, container smoke testing, critical image
+vulnerabilities, dependency review, dependency updates, and provenance.
+Repository-level CodeQL, secret scanning, and push protection still require
+enablement in GitHub settings. The published `latest` image is rescanned every
+Monday so newly disclosed vulnerabilities are detected between releases.
+
 - Run unit, API, policy, filesystem-safety, and synthetic FFmpeg tests before
   publishing an image.
 - Validate JavaScript syntax and the GitHub workflow.

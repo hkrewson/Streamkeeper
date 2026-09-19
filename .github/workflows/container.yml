@@ -15,16 +15,118 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
+  test:
+    name: Application tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install FFmpeg and package dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[dev]'
+
+      - name: Validate browser JavaScript
+        run: node --check src/streamkeeper/static/app.js
+
+      - name: Run test suite
+        run: pytest
+
+  container-check:
+    name: Container smoke and vulnerability checks
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build test image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: streamkeeper:ci
+          build-args: |
+            APP_VERSION=ci-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify startup, health, user, and database
+        run: |
+          docker volume create streamkeeper-ci-data
+          docker run --detach --name streamkeeper-ci \
+            --publish 127.0.0.1:8080:8080 \
+            --mount type=volume,source=streamkeeper-ci-data,target=/data \
+            streamkeeper:ci
+
+          ready=false
+          for _ in {1..30}; do
+            if curl --fail --silent --show-error http://127.0.0.1:8080/health; then
+              ready=true
+              break
+            fi
+            sleep 2
+          done
+
+          if [[ "$ready" != "true" ]]; then
+            docker logs streamkeeper-ci
+            exit 1
+          fi
+
+          test "$(docker inspect --format '{{.Config.User}}' streamkeeper-ci)" = "streamkeeper"
+          docker exec streamkeeper-ci test -s /data/streamkeeper.sqlite3
+
+      - name: Scan image for fixable critical vulnerabilities
+        uses: aquasecurity/trivy-action@0.36.0
+        with:
+          image-ref: streamkeeper:ci
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL
+
+      - name: Clean up smoke-test resources
+        if: always()
+        run: |
+          docker rm --force streamkeeper-ci 2>/dev/null || true
+          docker volume rm streamkeeper-ci-data 2>/dev/null || true
+
   build:
     name: Build and publish
+    needs:
+      - test
+      - container-check
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Normalize image name
         id: image
@@ -62,6 +164,7 @@ jobs:
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
 
       - name: Build and publish image
+        id: publish
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -74,3 +177,11 @@ jobs:
             APP_VERSION=${{ steps.metadata.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Attest published image provenance
+        if: github.event_name != 'pull_request'
+        uses: actions/attest@v4
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}
+          subject-digest: ${{ steps.publish.outputs.digest }}
+          push-to-registry: true

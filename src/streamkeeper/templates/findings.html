@@ -28,7 +28,7 @@
           <td><strong>{{ finding.asset_title }}</strong><span class="cell-subtitle">{{ finding.relative_path }}</span></td>
           <td>{{ finding.title }}</td>
           <td>{{ finding.category|capitalize }}</td>
-          <td>{{ finding.last_seen_at[:10] }}</td>
+          <td><time datetime="{{ finding.last_seen_at }}" data-local="date">{{ finding.last_seen_at[:10] }} UTC</time></td>
         </tr>
         {% else %}<tr><td colspan="4" class="empty-cell">No {{ active_status }} findings.</td></tr>{% endfor %}
       </tbody>
@@ -79,7 +79,7 @@
         </div>
         {% endif %}
         <dl class="fact-list probe-meta">
-          <div><dt>Scanned</dt><dd>{{ selected_probe.captured_at[:19]|replace('T', ' ') if selected_probe.captured_at else 'Unknown' }}</dd></div>
+          <div><dt>Scanned</dt><dd>{% if selected_probe.captured_at %}<time datetime="{{ selected_probe.captured_at }}" data-local="datetime">{{ selected_probe.captured_at[:19]|replace('T', ' ') }} UTC</time>{% else %}Unknown{% endif %}</dd></div>
           <div><dt>Tool</dt><dd>{{ selected_probe.tool_version or 'Unknown' }}</dd></div>
         </dl>
         <details class="raw-data"><summary>Raw probe data</summary><pre>{{ selected_probe_json }}</pre></details>

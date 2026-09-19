@@ -1,4 +1,18 @@
 (() => {
+  const localDateFormats = {
+    date: new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }),
+    datetime: new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }),
+    time: new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' }),
+  };
+
+  document.querySelectorAll('time[data-local]').forEach((element) => {
+    const timestamp = new Date(element.dateTime);
+    const formatter = localDateFormats[element.dataset.local];
+    if (!formatter || Number.isNaN(timestamp.getTime())) return;
+    element.textContent = formatter.format(timestamp);
+    element.title = `Stored as ${timestamp.toISOString()}`;
+  });
+
   const allPaths = [...document.querySelectorAll('.path-toggle')];
   let fullPaths = false;
   const toggleButton = document.querySelector('#toggle-paths');

@@ -129,11 +129,12 @@ def test_scan_detail_exposes_file_failures(tmp_path: Path):
     asset = MediaAsset(str(tmp_path / "Broken.mkv"), "Broken.mkv", LibraryType.MOVIE, 1, 1, "movie", "Broken")
     snapshot = ProbeSnapshot(asset.path, "2026-01-01T00:00:00+00:00", {}, [], error="invalid container")
     db.save_asset(library_id, asset, snapshot, [], scan_id)
+    db.add_scan_event(scan_id, "Probe failed for Broken.mkv", "error")
 
     with TestClient(app) as client:
         detail = client.get(f"/api/scans/{scan_id}")
         assert detail.json()["failures"][0]["error"] == "invalid container"
-        assert detail.json()["events"] == []
+        assert detail.json()["events"][0]["message"] == "Probe failed for Broken.mkv"
         page = client.get(f"/scans?selected={scan_id}")
         assert "Failed files" in page.text
         assert "Changes" in page.text
@@ -141,6 +142,9 @@ def test_scan_detail_exposes_file_failures(tmp_path: Path):
         assert "Activity log" in page.text
         assert "Broken.mkv" in page.text
         assert "invalid container" in page.text
+        assert 'data-local="datetime"' in page.text
+        assert 'data-local="time"' in page.text
+        assert " UTC</time>" in page.text
 
 
 def test_library_scope_and_assessment_counts(tmp_path: Path):

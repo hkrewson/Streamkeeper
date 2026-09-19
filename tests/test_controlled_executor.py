@@ -59,7 +59,7 @@ def test_controlled_executor_completes_evidence_nfo_and_transaction(tmp_path: Pa
     root = ET.parse(nfo).getroot()
     assert root.findtext("title") == "Fixture"
     assert root.findtext("uniqueid") == "test-id"
-    assert root.find("plexconvert").attrib["evidence"] == "Fixture.conversion.txt"
+    assert root.find("streamkeeper").attrib["evidence"] == "Fixture.conversion.txt"
 
 
 @pytest.mark.parametrize("failure_step", ["probed", "encoded", "validated", "evidence_prepared"])

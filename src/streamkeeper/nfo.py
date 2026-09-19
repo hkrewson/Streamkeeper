@@ -9,9 +9,13 @@ def update_nfo(path: str | Path, evidence_name: str, summary: str) -> bytes:
     nfo_path = Path(path)
     tree = ET.parse(nfo_path)
     root = tree.getroot()
-    node = root.find("plexconvert")
+    node = root.find("streamkeeper")
     if node is None:
-        node = ET.SubElement(root, "plexconvert")
+        node = root.find("plexconvert")
+        if node is not None:
+            node.tag = "streamkeeper"
+    if node is None:
+        node = ET.SubElement(root, "streamkeeper")
     node.set("evidence", evidence_name)
     node.text = summary
     ET.indent(tree, space="  ")

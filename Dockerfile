@@ -3,7 +3,8 @@ FROM python:3.12-slim
 ARG APP_VERSION=0.1.0
 LABEL org.opencontainers.image.title="Streamkeeper" \
       org.opencontainers.image.version="$APP_VERSION" \
-      org.opencontainers.image.description="Read-only Plex media scanner and compatibility planner"
+      org.opencontainers.image.description="Read-only media scanner and compatibility planner" \
+      org.opencontainers.image.source="https://github.com/hkrewson/streamkeeper"
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg curl \

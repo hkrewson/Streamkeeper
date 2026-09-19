@@ -1,5 +1,6 @@
 services:
   streamkeeper:
+    image: ghcr.io/hkrewson/streamkeeper:latest
     build: .
     container_name: streamkeeper
     restart: unless-stopped

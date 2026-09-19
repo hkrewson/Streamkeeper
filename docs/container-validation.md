@@ -9,7 +9,7 @@ Python base packages for x86-64 Synology models.
 - `docker compose config` expands successfully with media mounted at `/media`
   read-only and application data mounted at `/data` read-write.
 - The image builds without project files outside the declared build context.
-- The service starts as the unprivileged `plexconvert` user (UID 1026).
+- The service starts as the unprivileged `streamkeeper` user (UID 1026).
 - SQLite can create and migrate its database in `/data`.
 - A write attempt through the `/media` mount is rejected.
 - FFprobe is installed in the runtime image.

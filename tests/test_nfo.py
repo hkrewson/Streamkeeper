@@ -12,7 +12,7 @@ def test_nfo_preserves_unrelated_nodes_and_adds_evidence(tmp_path: Path):
     root = ET.fromstring(updated)
     assert root.findtext("title") == "Test"
     assert root.findtext("uniqueid") == "abc"
-    assert root.find("plexconvert").attrib["evidence"] == "Test.conversion.txt"
+    assert root.find("streamkeeper").attrib["evidence"] == "Test.conversion.txt"
 
 
 def test_episode_nfo_preserves_episode_structure_and_replaces_existing_evidence(tmp_path: Path):
@@ -33,6 +33,7 @@ def test_episode_nfo_preserves_episode_structure_and_replaces_existing_evidence(
     assert root.findtext("season") == "1"
     assert root.findtext("episode") == "2"
     assert root.find("uniqueid").attrib["type"] == "tvdb"
-    assert root.find("plexconvert").attrib["evidence"] == "Show S01E02.conversion.txt"
-    assert root.findtext("plexconvert") == "Validated stream conversion"
-    assert len(root.findall("plexconvert")) == 1
+    assert root.find("streamkeeper").attrib["evidence"] == "Show S01E02.conversion.txt"
+    assert root.findtext("streamkeeper") == "Validated stream conversion"
+    assert len(root.findall("streamkeeper")) == 1
+    assert root.find("plexconvert") is None

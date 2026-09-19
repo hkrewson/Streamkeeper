@@ -9,5 +9,5 @@ COPY legacy/convert-mkv-for-apple.reference.sh /usr/local/bin/convert-mkv-refere
 COPY tests/parity/stat /usr/local/bin/stat
 RUN chmod 0555 /usr/local/bin/convert-mkv-reference /usr/local/bin/stat
 
-USER plexconvert
+USER streamkeeper
 ENTRYPOINT ["/usr/local/bin/convert-mkv-reference"]

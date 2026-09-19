@@ -59,6 +59,16 @@ including per-file errors.
 
 ## Container
 
+Published releases are available for both Intel/AMD and ARM systems:
+
+```zsh
+docker pull ghcr.io/hkrewson/streamkeeper:latest
+```
+
+Every push to `main` publishes `latest` and a commit-specific image tag. A Git
+tag such as `v1.2.0` also publishes `1.2.0` and `1.2`, allowing a Synology
+deployment to stay on a chosen release line instead of following every change.
+
 Copy `.env.example` to `.env`, adjust the paths and credentials, then run:
 
 ```zsh

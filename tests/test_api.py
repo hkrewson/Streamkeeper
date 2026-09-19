@@ -22,6 +22,8 @@ def test_all_surfaces_and_read_only_api(tmp_path: Path):
         assert "Administrator access" not in settings_page
         assert "Add library" in settings_page
         assert 'id="library-form"' in settings_page
+        assert "Discovery exclusions" in settings_page
+        assert 'name="excluded_directories"' in settings_page
         assert client.get("/health").json() == {"status": "ok"}
         assert client.post("/api/convert", json={}).status_code == 404
         assert client.get("/api/settings").status_code == 200
@@ -38,6 +40,12 @@ def test_all_surfaces_and_read_only_api(tmp_path: Path):
         settings_page = client.get("/settings")
         assert 'data-time-zone="America/Chicago"' in settings_page.text
         assert '<option value="America/Chicago" selected>Central time</option>' in settings_page.text
+        exclusions = client.put(
+            "/api/settings",
+            json={"excluded_directories": ["Samples", "Samples"], "excluded_files": "*-temp.mkv\n"},
+        )
+        assert exclusions.json()["excluded_directories"] == ["Samples"]
+        assert exclusions.json()["excluded_files"] == ["*-temp.mkv"]
         report = client.get("/api/reports/compatibility.csv")
         assert report.status_code == 200
         assert report.text.startswith("title,relative_path")
@@ -111,6 +119,12 @@ def test_library_creation_validation(tmp_path: Path):
         assert updated.json()["name"] == "Films"
         disabled = client.patch(f"/api/libraries/{library_id}", json={"enabled": 0})
         assert disabled.json()["enabled"] == 0
+        patterns = client.patch(
+            f"/api/libraries/{library_id}",
+            json={"excluded_directories": ["Samples"], "excluded_files": ["*-workprint.mkv"]},
+        )
+        assert patterns.json()["excluded_directories"] == ["Samples"]
+        assert patterns.json()["excluded_files"] == ["*-workprint.mkv"]
         settings_page = client.get("/settings")
         assert "Films" in settings_page.text
         assert "Disabled" in settings_page.text

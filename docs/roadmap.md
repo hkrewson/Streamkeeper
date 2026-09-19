@@ -36,6 +36,10 @@ on both an AMD64 and ARM64 Synology remains pending.
 
 ## 3. Discovery exclusions
 
+Status: hidden paths are excluded by default; conservative global defaults and
+per-library directory and filename patterns are configurable. Each scan stores
+the excluded path, reason, and matching pattern for review in the scan detail.
+
 - Add global and per-library excluded directory and filename patterns.
 - Continue excluding hidden directories by default.
 - Show exclusions in scan results so ignored files are explainable.

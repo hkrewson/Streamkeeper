@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
+from .discovery import DEFAULT_EXCLUDED_DIRECTORIES, DEFAULT_EXCLUDED_FILES
 from .models import CompatibilityFinding, MediaAsset, ProbeSnapshot, ScanRun
 
 
@@ -42,6 +43,8 @@ class Database:
                     path TEXT NOT NULL UNIQUE,
                     library_type TEXT NOT NULL CHECK(library_type IN ('movie','tv','mixed')),
                     enabled INTEGER NOT NULL DEFAULT 1,
+                    excluded_directories_json TEXT NOT NULL DEFAULT '[]',
+                    excluded_files_json TEXT NOT NULL DEFAULT '[]',
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 );
@@ -57,6 +60,7 @@ class Database:
                     total_files INTEGER NOT NULL DEFAULT 0,
                     processed_files INTEGER NOT NULL DEFAULT 0,
                     failed_files INTEGER NOT NULL DEFAULT 0,
+                    excluded_paths INTEGER NOT NULL DEFAULT 0,
                     new_files INTEGER NOT NULL DEFAULT 0,
                     changed_files INTEGER NOT NULL DEFAULT 0,
                     unchanged_files INTEGER NOT NULL DEFAULT 0,
@@ -121,10 +125,19 @@ class Database:
                     level TEXT NOT NULL,
                     message TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS scan_exclusions (
+                    id INTEGER PRIMARY KEY,
+                    scan_id INTEGER NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
+                    relative_path TEXT NOT NULL,
+                    kind TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    pattern TEXT
+                );
                 CREATE INDEX IF NOT EXISTS idx_assets_library ON assets(library_id, relative_path);
                 CREATE INDEX IF NOT EXISTS idx_findings_status ON findings(status, last_seen_at);
                 CREATE INDEX IF NOT EXISTS idx_scans_created ON scans(created_at DESC);
                 CREATE INDEX IF NOT EXISTS idx_scan_events_scan ON scan_events(scan_id,id);
+                CREATE INDEX IF NOT EXISTS idx_scan_exclusions_scan ON scan_exclusions(scan_id,id);
                 """
             )
             asset_columns = {row[1] for row in db.execute("PRAGMA table_info(assets)")}
@@ -133,12 +146,19 @@ class Database:
             scan_columns = {row[1] for row in db.execute("PRAGMA table_info(scans)")}
             if "trigger" not in scan_columns:
                 db.execute("ALTER TABLE scans ADD COLUMN trigger TEXT NOT NULL DEFAULT 'manual'")
+            if "excluded_paths" not in scan_columns:
+                db.execute("ALTER TABLE scans ADD COLUMN excluded_paths INTEGER NOT NULL DEFAULT 0")
             for column in (
                 "new_files", "changed_files", "unchanged_files", "removed_files",
                 "probed_files", "reused_probes",
             ):
                 if column not in scan_columns:
                     db.execute(f"ALTER TABLE scans ADD COLUMN {column} INTEGER NOT NULL DEFAULT 0")
+            library_columns = {row[1] for row in db.execute("PRAGMA table_info(libraries)")}
+            if "excluded_directories_json" not in library_columns:
+                db.execute("ALTER TABLE libraries ADD COLUMN excluded_directories_json TEXT NOT NULL DEFAULT '[]'")
+            if "excluded_files_json" not in library_columns:
+                db.execute("ALTER TABLE libraries ADD COLUMN excluded_files_json TEXT NOT NULL DEFAULT '[]'")
 
     def recover_scan_tasks(self) -> list[dict[str, Any]]:
         """Return persisted queued work and replace scans interrupted by a restart.
@@ -199,18 +219,36 @@ class Database:
 
     def list_libraries(self) -> list[dict[str, Any]]:
         with self.connect() as db:
-            return [dict(row) for row in db.execute("SELECT * FROM libraries ORDER BY name COLLATE NOCASE")]
+            return [self._decorate_library(dict(row)) for row in db.execute("SELECT * FROM libraries ORDER BY name COLLATE NOCASE")]
 
     def library(self, library_id: int) -> dict[str, Any] | None:
         with self.connect() as db:
             row = db.execute("SELECT * FROM libraries WHERE id=?", (library_id,)).fetchone()
-            return dict(row) if row else None
+            return self._decorate_library(dict(row)) if row else None
+
+    @staticmethod
+    def _decorate_library(item: dict[str, Any]) -> dict[str, Any]:
+        for column, output in (
+            ("excluded_directories_json", "excluded_directories"),
+            ("excluded_files_json", "excluded_files"),
+        ):
+            try:
+                item[output] = json.loads(item.pop(column, "[]") or "[]")
+            except json.JSONDecodeError:
+                item[output] = []
+        return item
 
     def update_library(self, library_id: int, **values: Any) -> dict[str, Any] | None:
-        allowed = {"name", "path", "library_type", "enabled"}
+        allowed = {
+            "name", "path", "library_type", "enabled",
+            "excluded_directories", "excluded_files",
+        }
         values = {key: value for key, value in values.items() if key in allowed}
         if "path" in values:
             values["path"] = str(Path(values["path"]).expanduser().resolve())
+        for key in ("excluded_directories", "excluded_files"):
+            if key in values:
+                values[f"{key}_json"] = json.dumps(values.pop(key), separators=(",", ":"))
         if not values:
             return self.library(library_id)
         values["updated_at"] = utcnow()
@@ -223,11 +261,11 @@ class Database:
     def _insert_scan(db: sqlite3.Connection, run: ScanRun) -> int:
         cursor = db.execute(
             """INSERT INTO scans(library_id,path,library_type,deep,trigger,status,phase,total_files,
-               processed_files,failed_files,new_files,changed_files,unchanged_files,removed_files,
+               processed_files,failed_files,excluded_paths,new_files,changed_files,unchanged_files,removed_files,
                probed_files,reused_probes,started_at,finished_at,message,created_at)
-               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (run.library_id, run.path, run.library_type.value, int(run.deep), run.trigger, run.status, run.phase,
-             run.total_files, run.processed_files, run.failed_files, run.new_files, run.changed_files,
+             run.total_files, run.processed_files, run.failed_files, run.excluded_paths, run.new_files, run.changed_files,
              run.unchanged_files, run.removed_files, run.probed_files, run.reused_probes,
              run.started_at, run.finished_at, run.message, utcnow()),
         )
@@ -265,6 +303,7 @@ class Database:
             "status", "phase", "total_files", "processed_files", "failed_files",
             "new_files", "changed_files", "unchanged_files", "removed_files",
             "probed_files", "reused_probes", "started_at", "finished_at", "message",
+            "excluded_paths",
         }
         values = {key: value for key, value in values.items() if key in allowed}
         if not values:
@@ -314,6 +353,27 @@ class Database:
             rows = db.execute(
                 """SELECT id,created_at,level,message FROM scan_events
                    WHERE scan_id=? ORDER BY id LIMIT ?""",
+                (scan_id, limit),
+            )
+            return [dict(row) for row in rows]
+
+    def save_scan_exclusions(self, scan_id: int, exclusions: list[Any]) -> None:
+        with self.connect() as db:
+            db.execute("DELETE FROM scan_exclusions WHERE scan_id=?", (scan_id,))
+            db.executemany(
+                """INSERT INTO scan_exclusions(scan_id,relative_path,kind,reason,pattern)
+                   VALUES(?,?,?,?,?)""",
+                [
+                    (scan_id, item.relative_path, item.kind, item.reason, item.pattern)
+                    for item in exclusions
+                ],
+            )
+
+    def scan_exclusions(self, scan_id: int, limit: int = 200) -> list[dict[str, Any]]:
+        with self.connect() as db:
+            rows = db.execute(
+                """SELECT relative_path,kind,reason,pattern FROM scan_exclusions
+                   WHERE scan_id=? ORDER BY relative_path COLLATE NOCASE LIMIT ?""",
                 (scan_id, limit),
             )
             return [dict(row) for row in rows]
@@ -582,6 +642,8 @@ class Database:
             "retention_days": 90,
             "fallback_language": "eng",
             "time_zone": "local",
+            "excluded_directories": list(DEFAULT_EXCLUDED_DIRECTORIES),
+            "excluded_files": list(DEFAULT_EXCLUDED_FILES),
         }
         with self.connect() as db:
             for row in db.execute("SELECT key,value_json FROM settings"):

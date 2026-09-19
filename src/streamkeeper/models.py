@@ -136,6 +136,7 @@ class ScanRun:
     total_files: int = 0
     processed_files: int = 0
     failed_files: int = 0
+    excluded_paths: int = 0
     new_files: int = 0
     changed_files: int = 0
     unchanged_files: int = 0

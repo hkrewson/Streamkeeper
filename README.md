@@ -12,6 +12,9 @@ file counts for inspection in the web interface and API. Scan history also
 records whether a run was started manually, by the daily/weekly scheduler, or
 as recovery after an application restart. Repeated requests for the same
 library and scan depth reuse an active run rather than queueing duplicates.
+Hidden paths and configurable global or per-library glob patterns are excluded
+before probing. Scan detail records each excluded path and the rule that matched
+it, while standard Plex extra folders remain eligible for scanning.
 
 Conversion execution is deliberately locked in this release. The existing shell
 converter remains the behavioral reference until differential and controlled-media

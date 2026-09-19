@@ -68,6 +68,8 @@
       document.querySelector('#library-name').value = library.name;
       document.querySelector('#library-path').value = library.path;
       document.querySelector('#library-type').value = library.library_type;
+      document.querySelector('#library-excluded-directories').value = (library.excluded_directories || []).join('\n');
+      document.querySelector('#library-excluded-files').value = (library.excluded_files || []).join('\n');
       document.querySelector('#library-enabled').checked = Boolean(library.enabled);
       document.querySelector('#library-dialog-title').textContent = 'Edit library';
       document.querySelector('#library-error').textContent = '';
@@ -79,11 +81,15 @@
     event.preventDefault();
     const id = document.querySelector('#library-id').value;
     const error = document.querySelector('#library-error');
+    const patterns = (selector) => document.querySelector(selector).value
+      .split('\n').map((value) => value.trim()).filter(Boolean);
     const payload = {
       name: document.querySelector('#library-name').value.trim(),
       path: document.querySelector('#library-path').value.trim(),
       library_type: document.querySelector('#library-type').value,
       enabled: document.querySelector('#library-enabled').checked ? 1 : 0,
+      excluded_directories: patterns('#library-excluded-directories'),
+      excluded_files: patterns('#library-excluded-files'),
     };
     const response = await fetch(id ? `/api/libraries/${id}` : '/api/libraries', {
       method: id ? 'PATCH' : 'POST',

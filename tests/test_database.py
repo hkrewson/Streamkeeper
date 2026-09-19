@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from streamkeeper.database import Database
+from streamkeeper.discovery import DiscoveryExclusion
 from streamkeeper.models import CompatibilityFinding, LibraryType, MediaAsset, ProbeSnapshot, ScanRun
 
 
@@ -71,6 +72,26 @@ def test_settings_round_trip(tmp_path: Path):
     assert db.settings()["network_ceiling_bps"] == 850_000_000
     assert db.settings()["fallback_language"] == "fra"
     assert db.settings()["time_zone"] == "America/Chicago"
+    assert "@eaDir" in db.settings()["excluded_directories"]
+
+
+def test_library_exclusions_round_trip_and_scan_exclusions_are_persisted(tmp_path: Path):
+    db = Database(tmp_path / "test.sqlite3")
+    library_id = db.add_library("Movies", str(tmp_path), "movie")
+    library = db.update_library(
+        library_id,
+        excluded_directories=["Samples"],
+        excluded_files=["*-workprint.mkv"],
+    )
+    assert library["excluded_directories"] == ["Samples"]
+    assert db.list_libraries()[0]["excluded_files"] == ["*-workprint.mkv"]
+
+    scan_id = db.create_scan(ScanRun(None, library_id, str(tmp_path), LibraryType.MOVIE, False))
+    db.save_scan_exclusions(
+        scan_id,
+        [DiscoveryExclusion("Samples", "directory", "Directory pattern", "Samples")],
+    )
+    assert db.scan_exclusions(scan_id)[0]["relative_path"] == "Samples"
 
 
 def test_create_scan_if_idle_deduplicates_matching_active_work(tmp_path: Path):

@@ -98,7 +98,10 @@ def create_app(database_path: str | Path | None = None, *, start_worker: bool = 
         return templates.TemplateResponse(request, f"{name}.html", base)
 
     def validated_settings(payload: dict[str, Any]) -> dict[str, Any]:
-        allowed = {"network_ceiling_bps", "schedule", "retention_days", "fallback_language", "time_zone"}
+        allowed = {
+            "network_ceiling_bps", "schedule", "retention_days", "fallback_language",
+            "time_zone", "excluded_directories", "excluded_files",
+        }
         updates = {key: value for key, value in payload.items() if key in allowed}
         if "network_ceiling_bps" in updates:
             try:
@@ -123,7 +126,22 @@ def create_app(database_path: str | Path | None = None, *, start_worker: bool = 
             updates["fallback_language"] = language
         if "time_zone" in updates and updates["time_zone"] not in time_zones:
             raise HTTPException(422, "time_zone is not supported")
+        for key in ("excluded_directories", "excluded_files"):
+            if key in updates:
+                updates[key] = normalize_patterns(updates[key], key)
         return updates
+
+    def normalize_patterns(value: Any, label: str) -> list[str]:
+        if isinstance(value, str):
+            values = value.splitlines()
+        elif isinstance(value, list):
+            values = value
+        else:
+            raise HTTPException(422, f"{label} must be a list or one pattern per line")
+        patterns = list(dict.fromkeys(str(item).strip() for item in values if str(item).strip()))
+        if len(patterns) > 100 or any(len(pattern) > 256 for pattern in patterns):
+            raise HTTPException(422, f"{label} contains too many or overly long patterns")
+        return patterns
 
     def tool_health() -> dict[str, Any]:
         tools = {name: tool_status(name) for name in ("ffmpeg", "ffprobe", "dovi_tool")}
@@ -260,9 +278,10 @@ def create_app(database_path: str | Path | None = None, *, start_worker: bool = 
         selected_scan = database.scan(selected) if selected else (scans[0] if scans else None)
         failures = database.scan_failures(selected_scan["id"]) if selected_scan else []
         events = database.scan_events(selected_scan["id"]) if selected_scan else []
+        exclusions = database.scan_exclusions(selected_scan["id"]) if selected_scan else []
         return page(
             request, "scans", scans=scans, selected_scan=selected_scan,
-            scan_failures=failures, scan_events=events,
+            scan_failures=failures, scan_events=events, scan_exclusions=exclusions,
         )
 
     @app.get("/findings", response_class=HTMLResponse, dependencies=[Depends(authorize)])
@@ -331,6 +350,7 @@ def create_app(database_path: str | Path | None = None, *, start_worker: bool = 
         network_ceiling_mbps: int = Form(900), retention_days: int = Form(90),
         fallback_language: str = Form("eng"), schedule: str = Form("manual"),
         time_zone: str = Form("local"),
+        excluded_directories: str = Form(""), excluded_files: str = Form(""),
     ):
         updates = validated_settings({
             "network_ceiling_bps": network_ceiling_mbps * 1_000_000,
@@ -338,6 +358,8 @@ def create_app(database_path: str | Path | None = None, *, start_worker: bool = 
             "fallback_language": fallback_language,
             "schedule": schedule,
             "time_zone": time_zone,
+            "excluded_directories": excluded_directories,
+            "excluded_files": excluded_files,
         })
         database.set_settings(updates)
         database.apply_retention(updates["retention_days"])
@@ -355,9 +377,17 @@ def create_app(database_path: str | Path | None = None, *, start_worker: bool = 
             path = str(payload["path"]).strip()
             if not path:
                 raise ValueError("Library path is required")
+            directory_patterns = normalize_patterns(
+                payload.get("excluded_directories", []), "excluded_directories",
+            )
+            file_patterns = normalize_patterns(payload.get("excluded_files", []), "excluded_files")
             library_id = database.add_library(str(payload.get("name") or ""), path, library_type.value)
-            if not bool(payload.get("enabled", True)):
-                database.update_library(library_id, enabled=0)
+            database.update_library(
+                library_id,
+                enabled=1 if bool(payload.get("enabled", True)) else 0,
+                excluded_directories=directory_patterns,
+                excluded_files=file_patterns,
+            )
         except (KeyError, TypeError, ValueError) as exc:
             raise HTTPException(422, str(exc)) from exc
         except sqlite3.IntegrityError as exc:
@@ -374,6 +404,9 @@ def create_app(database_path: str | Path | None = None, *, start_worker: bool = 
                 raise HTTPException(422, str(exc)) from exc
         if "path" in payload and not str(payload["path"]).strip():
             raise HTTPException(422, "Library path is required")
+        for key in ("excluded_directories", "excluded_files"):
+            if key in payload:
+                payload[key] = normalize_patterns(payload[key], key)
         try:
             library = database.update_library(library_id, **payload)
         except sqlite3.IntegrityError as exc:
@@ -412,6 +445,7 @@ def create_app(database_path: str | Path | None = None, *, start_worker: bool = 
             raise HTTPException(404, "Scan not found")
         scan["failures"] = database.scan_failures(scan_id)
         scan["events"] = database.scan_events(scan_id)
+        scan["exclusions"] = database.scan_exclusions(scan_id)
         return scan
 
     @app.get("/api/findings", dependencies=[Depends(authorize)])

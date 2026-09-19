@@ -179,6 +179,42 @@ def test_incremental_scan_reprobes_changed_file(tmp_path: Path, monkeypatch):
         worker.close()
 
 
+def test_worker_applies_global_and_library_exclusions_and_records_them(tmp_path: Path, monkeypatch):
+    keep = tmp_path / "Movie" / "Featurettes" / "Interview.mkv"
+    global_skip = tmp_path / "node_modules" / "fixture.mkv"
+    library_skip = tmp_path / "Movie" / "Movie-workprint.mkv"
+    hidden_skip = tmp_path / ".deletedByTMM" / "Old.mkv"
+    for path in (keep, global_skip, library_skip, hidden_skip):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
+
+    db = Database(tmp_path / "worker.sqlite3")
+    library_id = db.add_library("Movies", str(tmp_path), "movie")
+    db.update_library(library_id, excluded_files=["*-workprint.mkv"])
+    monkeypatch.setattr(
+        "streamkeeper.worker.probe_file",
+        lambda path, *, deep=False: ProbeSnapshot(str(path), "2026-01-01T00:00:00Z", {}, []),
+    )
+    worker = ScanWorker(db)
+    try:
+        scan_id = worker.enqueue(
+            library_id=library_id, path=str(tmp_path), library_type=LibraryType.MOVIE,
+        )
+        worker.tasks.join()
+        assert [asset["relative_path"] for asset in db.assets()] == [
+            "Movie/Featurettes/Interview.mkv"
+        ]
+        scan = db.scan(scan_id)
+        assert scan["excluded_paths"] == 3
+        exclusions = db.scan_exclusions(scan_id)
+        assert {item["relative_path"] for item in exclusions} == {
+            ".deletedByTMM", "node_modules", "Movie/Movie-workprint.mkv",
+        }
+        assert any("Excluded 3 paths" in item["message"] for item in db.scan_events(scan_id))
+    finally:
+        worker.close()
+
+
 def test_scheduled_libraries_respect_interval_enabled_state_and_active_work(tmp_path: Path):
     db = Database(tmp_path / "worker.sqlite3")
     movies_id = db.add_library("Movies", str(tmp_path / "movies"), "movie")

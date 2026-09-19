@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from streamkeeper.database import Database, utcnow
+from streamkeeper.discovery import DiscoveryExclusion
 from streamkeeper.models import CompatibilityFinding, LibraryType, MediaAsset, ProbeSnapshot, ScanRun
 
 
@@ -29,6 +30,11 @@ def main() -> None:
     scan_one = db.create_scan(ScanRun(None, movies, "/media/movies", LibraryType.MOVIE, True, status="completed_with_errors", phase="complete", total_files=1842, processed_files=1842, failed_files=3, started_at="2026-09-17T02:00:00+00:00", finished_at="2026-09-17T05:18:00+00:00", message="Scanned 1,842 files; 3 failed"))
     scan_two = db.create_scan(ScanRun(None, television, "/media/television", LibraryType.TV, False, status="completed", phase="complete", total_files=575, processed_files=575, failed_files=0, started_at="2026-09-18T02:00:00+00:00", finished_at="2026-09-18T02:54:00+00:00", message="Scanned 575 files; 0 failed"))
     scan_three = db.create_scan(ScanRun(None, movies, "/media/movies", LibraryType.MOVIE, True, status="running", phase="deep analysis", total_files=1842, processed_files=1204, failed_files=3, started_at="2026-09-18T14:31:00+00:00", message="Charlie's Angels (2000).mkv"))
+    db.update_scan(scan_three, excluded_paths=2)
+    db.save_scan_exclusions(scan_three, [
+        DiscoveryExclusion(".deletedByTMM", "directory", "Hidden directory", ".*"),
+        DiscoveryExclusion("Movie/Samples", "directory", "Directory pattern", "Samples"),
+    ])
     samples = [
         (movies, "100 Yards (2024)/100 Yards (2024).mkv", "hevc", "eac3", 6, None, 78_000_000, []),
         (movies, "Howling, The (1981)/Howling, The (1981).mkv", "hevc", "truehd", 8, "hdmv_pgs_subtitle", 121_000_000, [CompatibilityFinding("audio.fallback", "audio", "action", "Apple audio fallback needed", "TrueHD is preserved; an E-AC3 5.1 fallback is planned.", "English E-AC3 5.1"), CompatibilityFinding("subtitle.bitmap", "subtitle", "warning", "Image-based subtitles", "One PGS track may trigger video transcoding.")]),

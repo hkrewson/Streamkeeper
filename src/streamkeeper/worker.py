@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .database import Database
-from .discovery import discover
+from .discovery import discover_with_exclusions
 from .models import CompatibilityFinding, LibraryType, ProbeSnapshot, ScanRun
 from .policy import findings_for
 from .probe import ProbeError, probe_file
@@ -124,13 +124,35 @@ class ScanWorker:
         self.database.update_scan(task.scan_id, status="running", started_at=now(), phase="discovery", message="Finding media files")
         self.database.add_scan_event(task.scan_id, "Scan started; discovering media files")
         try:
-            assets = list(discover(task.path, task.library_type))
+            settings = self.database.settings()
+            library = self.database.library(task.library_id) if task.library_id is not None else None
+            excluded_directories = list(settings.get("excluded_directories", []))
+            excluded_files = list(settings.get("excluded_files", []))
+            if library:
+                excluded_directories.extend(library.get("excluded_directories", []))
+                excluded_files.extend(library.get("excluded_files", []))
+            discovery = discover_with_exclusions(
+                task.path,
+                task.library_type,
+                excluded_directories=list(dict.fromkeys(excluded_directories)),
+                excluded_files=list(dict.fromkeys(excluded_files)),
+            )
+            assets = discovery.assets
+            self.database.save_scan_exclusions(task.scan_id, discovery.exclusions)
         except Exception as exc:
             self.database.update_scan(task.scan_id, status="failed", finished_at=now(), message=str(exc))
             self.database.add_scan_event(task.scan_id, f"Discovery failed: {exc}", "error")
             return
-        self.database.update_scan(task.scan_id, phase="probing", total_files=len(assets), message="Reading stream metadata")
+        self.database.update_scan(
+            task.scan_id, phase="probing", total_files=len(assets),
+            excluded_paths=len(discovery.exclusions), message="Reading stream metadata",
+        )
         self.database.add_scan_event(task.scan_id, f"Discovered {len(assets)} supported media files")
+        if discovery.exclusions:
+            self.database.add_scan_event(
+                task.scan_id,
+                f"Excluded {len(discovery.exclusions)} paths by hidden-path and configured-pattern rules",
+            )
         failed = 0
         probed = 0
         reused = 0

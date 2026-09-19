@@ -576,7 +576,13 @@ class Database:
         }
 
     def settings(self) -> dict[str, Any]:
-        defaults = {"network_ceiling_bps": 900_000_000, "schedule": "manual", "retention_days": 90, "fallback_language": "eng"}
+        defaults = {
+            "network_ceiling_bps": 900_000_000,
+            "schedule": "manual",
+            "retention_days": 90,
+            "fallback_language": "eng",
+            "time_zone": "local",
+        }
         with self.connect() as db:
             for row in db.execute("SELECT key,value_json FROM settings"):
                 defaults[row[0]] = json.loads(row[1])

@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="{{ url_for('static', path='/app.css') }}">
   <script defer src="{{ url_for('static', path='/app.js') }}"></script>
 </head>
-<body data-page="{{ page }}">
+<body data-page="{{ page }}" data-time-zone="{{ display_time_zone }}">
   <aside class="sidebar">
     <a class="product" href="/library"><span class="product-mark">SK</span><span>Streamkeeper</span></a>
     <nav aria-label="Main navigation">

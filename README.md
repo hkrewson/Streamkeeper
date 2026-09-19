@@ -100,6 +100,9 @@ launcher for the Python CLI. The policy contract is in `docs/policy-matrix.md`.
 Current differential results and unresolved policy questions are recorded in
 `docs/parity-status.md`.
 
+The ordered implementation and deployment work is tracked in
+`docs/roadmap.md`.
+
 Python conversion execution remains locked until differential plan parity,
 controlled output tests, a read-only full-library shadow scan, and selected
 off-library playback tests are reviewed and accepted. The package already

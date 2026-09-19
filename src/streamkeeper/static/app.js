@@ -1,8 +1,10 @@
 (() => {
+  const configuredTimeZone = document.body.dataset.timeZone || 'local';
+  const timeZone = configuredTimeZone === 'local' ? undefined : configuredTimeZone;
   const localDateFormats = {
-    date: new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }),
-    datetime: new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }),
-    time: new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' }),
+    date: new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeZone }),
+    datetime: new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone }),
+    time: new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit', timeZone }),
   };
 
   document.querySelectorAll('time[data-local]').forEach((element) => {
@@ -10,7 +12,8 @@
     const formatter = localDateFormats[element.dataset.local];
     if (!formatter || Number.isNaN(timestamp.getTime())) return;
     element.textContent = formatter.format(timestamp);
-    element.title = `Stored as ${timestamp.toISOString()}`;
+    const zoneLabel = configuredTimeZone === 'local' ? 'Browser or device time' : configuredTimeZone;
+    element.title = `${zoneLabel} · Stored as ${timestamp.toISOString()}`;
   });
 
   const allPaths = [...document.querySelectorAll('.path-toggle')];

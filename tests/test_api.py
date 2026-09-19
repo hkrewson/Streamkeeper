@@ -30,8 +30,14 @@ def test_all_surfaces_and_read_only_api(tmp_path: Path):
         assert client.put("/api/settings", json={"network_ceiling_bps": 0}).status_code == 422
         assert client.put("/api/settings", json={"schedule": "hourly"}).status_code == 422
         assert client.put("/api/settings", json={"fallback_language": "english"}).status_code == 422
+        assert client.put("/api/settings", json={"time_zone": "Central"}).status_code == 422
         normalized = client.put("/api/settings", json={"fallback_language": "FRA"})
         assert normalized.json()["fallback_language"] == "fra"
+        configured = client.put("/api/settings", json={"time_zone": "America/Chicago"})
+        assert configured.json()["time_zone"] == "America/Chicago"
+        settings_page = client.get("/settings")
+        assert 'data-time-zone="America/Chicago"' in settings_page.text
+        assert '<option value="America/Chicago" selected>Central time</option>' in settings_page.text
         report = client.get("/api/reports/compatibility.csv")
         assert report.status_code == 200
         assert report.text.startswith("title,relative_path")

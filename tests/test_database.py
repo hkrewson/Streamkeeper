@@ -66,9 +66,11 @@ def test_ignored_finding_resolves_when_asset_disappears(tmp_path: Path):
 
 def test_settings_round_trip(tmp_path: Path):
     db = Database(tmp_path / "test.sqlite3")
-    db.set_settings({"network_ceiling_bps": 850_000_000, "fallback_language": "fra"})
+    assert db.settings()["time_zone"] == "local"
+    db.set_settings({"network_ceiling_bps": 850_000_000, "fallback_language": "fra", "time_zone": "America/Chicago"})
     assert db.settings()["network_ceiling_bps"] == 850_000_000
     assert db.settings()["fallback_language"] == "fra"
+    assert db.settings()["time_zone"] == "America/Chicago"
 
 
 def test_create_scan_if_idle_deduplicates_matching_active_work(tmp_path: Path):

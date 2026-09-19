@@ -70,18 +70,35 @@ def create_app(database_path: str | Path | None = None, *, start_worker: bool = 
                 headers={"WWW-Authenticate": 'Basic realm="Streamkeeper"'},
             )
 
+    time_zones = {
+        "local": "Browser or device time",
+        "UTC": "UTC",
+        "America/New_York": "Eastern time",
+        "America/Chicago": "Central time",
+        "America/Denver": "Mountain time",
+        "America/Los_Angeles": "Pacific time",
+        "America/Anchorage": "Alaska time",
+        "Pacific/Honolulu": "Hawaii time",
+        "Europe/London": "United Kingdom time",
+        "Europe/Paris": "Central European time",
+        "Asia/Tokyo": "Japan time",
+        "Australia/Sydney": "Sydney time",
+    }
+
     def page(request: Request, name: str, **context: Any) -> HTMLResponse:
+        settings = database.settings()
         base = {
             "request": request,
             "page": name,
             "libraries": database.list_libraries(),
             "finding_counts": database.finding_counts(),
+            "display_time_zone": settings["time_zone"],
         }
         base.update(context)
         return templates.TemplateResponse(request, f"{name}.html", base)
 
     def validated_settings(payload: dict[str, Any]) -> dict[str, Any]:
-        allowed = {"network_ceiling_bps", "schedule", "retention_days", "fallback_language"}
+        allowed = {"network_ceiling_bps", "schedule", "retention_days", "fallback_language", "time_zone"}
         updates = {key: value for key, value in payload.items() if key in allowed}
         if "network_ceiling_bps" in updates:
             try:
@@ -104,6 +121,8 @@ def create_app(database_path: str | Path | None = None, *, start_worker: bool = 
             if len(language) != 3 or not language.isalpha():
                 raise HTTPException(422, "fallback_language must be a three-letter language code")
             updates["fallback_language"] = language
+        if "time_zone" in updates and updates["time_zone"] not in time_zones:
+            raise HTTPException(422, "time_zone is not supported")
         return updates
 
     def tool_health() -> dict[str, Any]:
@@ -302,15 +321,23 @@ def create_app(database_path: str | Path | None = None, *, start_worker: bool = 
             name: details["version"] if details["available"] else None
             for name, details in health["tools"].items()
         }
-        return page(request, "settings", settings=database.settings(), tool_versions=versions, saved=bool(saved))
+        return page(
+            request, "settings", settings=database.settings(), time_zones=time_zones,
+            tool_versions=versions, saved=bool(saved),
+        )
 
     @app.post("/settings", dependencies=[Depends(authorize)])
-    def save_settings(network_ceiling_mbps: int = Form(900), retention_days: int = Form(90), fallback_language: str = Form("eng"), schedule: str = Form("manual")):
+    def save_settings(
+        network_ceiling_mbps: int = Form(900), retention_days: int = Form(90),
+        fallback_language: str = Form("eng"), schedule: str = Form("manual"),
+        time_zone: str = Form("local"),
+    ):
         updates = validated_settings({
             "network_ceiling_bps": network_ceiling_mbps * 1_000_000,
             "retention_days": retention_days,
             "fallback_language": fallback_language,
             "schedule": schedule,
+            "time_zone": time_zone,
         })
         database.set_settings(updates)
         database.apply_retention(updates["retention_days"])

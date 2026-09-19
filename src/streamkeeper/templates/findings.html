@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Findings · Streamkeeper{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div><h1>Findings</h1><p>Compatibility items found during scans</p></div>
+  <div class="header-actions">
+    <form method="get">
+      <select id="finding-library-scope" name="library_id" aria-label="Library">
+        <option value="">All libraries</option>
+        {% for library in libraries %}<option value="{{ library.id }}" {% if selected_library_id == library.id %}selected{% endif %}>{{ library.name }}</option>{% endfor %}
+      </select>
+      <input type="hidden" name="status_filter" value="{{ active_status }}">
+    </form>
+  </div>
+</header>
+<nav class="tabs" aria-label="Finding status">
+  {% for key,label in [('open','Open'),('new','New'),('ignored','Ignored'),('resolved','Resolved')] %}
+  <a href="/findings?status_filter={{ key }}{% if selected_library_id %}&library_id={{ selected_library_id }}{% endif %}" {% if active_status == key %}aria-current="page"{% endif %}>{{ label }} <span>{{ status_counts[key] }}</span></a>
+  {% endfor %}
+</nav>
+<div class="split-layout findings-layout">
+  <section class="table-region">
+    <table>
+      <thead><tr><th>Media</th><th>Finding</th><th>Category</th><th>Last scan</th></tr></thead>
+      <tbody>
+        {% for finding in findings %}
+        <tr class="selectable {% if selected_finding and finding.id == selected_finding.id %}selected{% endif %}" data-href="/findings?status_filter={{ active_status }}&selected={{ finding.id }}{% if selected_library_id %}&library_id={{ selected_library_id }}{% endif %}">
+          <td><strong>{{ finding.asset_title }}</strong><span class="cell-subtitle">{{ finding.relative_path }}</span></td>
+          <td>{{ finding.title }}</td>
+          <td>{{ finding.category|capitalize }}</td>
+          <td>{{ finding.last_seen_at[:10] }}</td>
+        </tr>
+        {% else %}<tr><td colspan="4" class="empty-cell">No {{ active_status }} findings.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </section>
+  <aside class="inspector finding-inspector">
+    {% if selected_finding %}
+    <div class="inspector-heading">
+      <span class="badge {{ 'action' if selected_finding.severity in ['error','action'] else 'warning' }}">{{ selected_finding.severity|capitalize }}</span>
+      <h2>{{ selected_finding.title }}</h2>
+      <button class="path path-toggle" data-relative="{{ selected_finding.relative_path }}" data-full="{{ selected_finding.path }}">{{ selected_finding.relative_path }}</button>
+    </div>
+
+    <div class="inspector-tabs" role="tablist" aria-label="Finding detail">
+      <button type="button" role="tab" aria-selected="true" aria-controls="finding-summary" data-inspector-tab="finding-summary">Summary</button>
+      <button type="button" role="tab" aria-selected="false" aria-controls="finding-probe" data-inspector-tab="finding-probe">Probe</button>
+      <button type="button" role="tab" aria-selected="false" aria-controls="finding-plan" data-inspector-tab="finding-plan">Plan</button>
+    </div>
+
+    <section id="finding-summary" class="inspector-panel" role="tabpanel">
+      <p>{{ selected_finding.detail }}</p>
+      {% if selected_finding.recommended_action %}
+      <h3>Planned response</h3>
+      <p>{{ selected_finding.recommended_action }}</p>
+      {% endif %}
+    </section>
+
+    <section id="finding-probe" class="inspector-panel" role="tabpanel" hidden>
+      {% if selected_probe %}
+        {% if selected_probe.error %}
+        <div class="inline-error"><strong>Probe failed</strong><p>{{ selected_probe.error }}</p></div>
+        {% else %}
+        <dl class="fact-list">
+          <div><dt>Container</dt><dd>{{ selected_probe.container }}</dd></div>
+          <div><dt>Duration</dt><dd>{{ selected_probe.duration }}</dd></div>
+          <div><dt>File size</dt><dd>{{ selected_probe.size }}</dd></div>
+          <div><dt>Peak bitrate</dt><dd>{{ selected_probe.peak_bitrate }}</dd></div>
+          <div><dt>Chapters</dt><dd>{{ selected_probe.chapters }}</dd></div>
+        </dl>
+        <h3>Streams</h3>
+        <div class="stream-list">
+          {% for stream in selected_probe.streams %}
+          <div class="stream-row">
+            <div><strong>{{ stream.type }} {{ stream.number }}</strong><span>{{ stream.codec }}</span></div>
+            <p>{% if stream.title %}{{ stream.title }} · {% endif %}{{ stream.details|join(' · ') }}{% if stream.default %} · Default{% endif %}{% if stream.forced %} · Forced{% endif %}</p>
+          </div>
+          {% else %}<p class="muted">No stream metadata was returned.</p>{% endfor %}
+        </div>
+        {% endif %}
+        <dl class="fact-list probe-meta">
+          <div><dt>Scanned</dt><dd>{{ selected_probe.captured_at[:19]|replace('T', ' ') if selected_probe.captured_at else 'Unknown' }}</dd></div>
+          <div><dt>Tool</dt><dd>{{ selected_probe.tool_version or 'Unknown' }}</dd></div>
+        </dl>
+        <details class="raw-data"><summary>Raw probe data</summary><pre>{{ selected_probe_json }}</pre></details>
+      {% else %}<p class="muted">No probe data is available for this item.</p>{% endif %}
+    </section>
+
+    <section id="finding-plan" class="inspector-panel" role="tabpanel" hidden>
+      {% if selected_plan %}
+      <h3>Video</h3>
+      <div class="decision-row"><strong>{{ selected_plan.video_action }}</strong><span>{{ selected_plan.video_reason }} · {{ selected_plan.hdr_mode }}</span></div>
+      <h3>Audio</h3>
+      <div class="decision-row"><strong>{{ selected_plan.audio_action }}</strong><span>{{ selected_plan.audio_detail }}</span><span>Default: {{ selected_plan.default_audio }}</span></div>
+      <h3>Subtitles</h3>
+      <dl class="fact-list compact">
+        <div><dt>Preserved</dt><dd>{{ selected_plan.subtitles.retained }}</dd></div>
+        <div><dt>SRT fallbacks</dt><dd>{{ selected_plan.subtitles.ass_srt_fallbacks }}</dd></div>
+        <div><dt>Text conversions</dt><dd>{{ selected_plan.subtitles.mov_text_conversions }}</dd></div>
+        <div><dt>Bitmap warnings</dt><dd>{{ selected_plan.subtitles.bitmap_warnings }}</dd></div>
+      </dl>
+      <h3>Files</h3>
+      <dl class="fact-list file-list">
+        <div><dt>Output</dt><dd>{{ selected_plan.output_name }}</dd></div>
+        <div><dt>Original</dt><dd>{{ selected_plan.backup_name }}</dd></div>
+        <div><dt>Evidence</dt><dd>{{ selected_plan.evidence_name }}</dd></div>
+        <div><dt>NFO</dt><dd>{{ selected_plan.nfo_name or 'No matching NFO' }}</dd></div>
+      </dl>
+      {% if selected_plan.warnings %}<h3>Warnings</h3><ul class="plain-list">{% for warning in selected_plan.warnings %}<li>{{ warning }}</li>{% endfor %}</ul>{% endif %}
+      <p class="tool-requirements">Requires {{ selected_plan.required_tools|join(', ') }}</p>
+      <details class="raw-data"><summary>Raw dry-run plan</summary><pre>{{ selected_plan_json }}</pre></details>
+      {% else %}
+      <div class="empty-detail"><strong>Plan unavailable</strong><p>A successful probe is required before Streamkeeper can create a dry-run plan.</p></div>
+      {% endif %}
+    </section>
+
+    <div class="inspector-actions">
+      {% if selected_finding.status == 'open' %}<button class="button secondary finding-status" type="button" data-finding="{{ selected_finding.id }}" data-status="ignored" data-return="/findings?status_filter={{ active_status }}{% if selected_library_id %}&library_id={{ selected_library_id }}{% endif %}">Ignore</button>
+      {% elif selected_finding.status == 'ignored' %}<button class="button secondary finding-status" type="button" data-finding="{{ selected_finding.id }}" data-status="open" data-return="/findings?status_filter={{ active_status }}{% if selected_library_id %}&library_id={{ selected_library_id }}{% endif %}">Reopen</button>{% endif %}
+    </div>
+    {% else %}<div class="inspector-empty">Select a finding to review its evidence and planned response.</div>{% endif %}
+  </aside>
+</div>
+{% endblock %}

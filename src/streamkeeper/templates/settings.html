@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Settings · Streamkeeper{% endblock %}
+{% block content %}
+<header class="page-header settings-header"><div><h1>Settings</h1><p>Libraries, scanning, tools, and storage</p></div><div class="header-actions">{% if saved %}<span class="saved">Settings saved</span>{% endif %}<button class="button" type="submit" form="settings-form">Save settings</button></div></header>
+<div class="settings-content">
+  <section id="libraries">
+    <div class="section-heading"><h2>Libraries</h2><button class="button secondary" type="button" data-dialog-open="library-dialog">Add library</button></div>
+    <p>Media is read-only in the web application.</p>
+    {% for library in libraries %}
+    <div class="form-row library-row">
+      <div><strong>{{ library.name }}</strong><span>{{ library.path }}</span></div>
+      <div class="row-actions"><span>{{ library.library_type|capitalize }} · {{ 'Enabled' if library.enabled else 'Disabled' }}</span><button class="text-action" type="button" data-library-edit data-library="{{ library|tojson|forceescape }}">Edit</button></div>
+    </div>
+    {% else %}
+    <div class="form-row"><div><strong>No libraries configured</strong><span>Add a mounted movie, television, or mixed-media folder.</span></div></div>
+    {% endfor %}
+  </section>
+  <form id="settings-form" method="post">
+    <section id="network"><h2>Network profiles</h2><label class="form-row"><div><strong>Comfortable LAN ceiling</strong><span>Peak bitrate above this value creates a finding.</span></div><span class="field-suffix"><input name="network_ceiling_mbps" type="number" min="1" value="{{ settings.network_ceiling_bps // 1000000 }}"> Mbps</span></label></section>
+    <section id="schedule"><h2>Schedules</h2><label class="form-row"><div><strong>Automatic scan</strong><span>Manual remains the safe default for network storage.</span></div><select name="schedule"><option value="manual" {% if settings.schedule == 'manual' %}selected{% endif %}>Manual only</option><option value="daily" {% if settings.schedule == 'daily' %}selected{% endif %}>Daily</option><option value="weekly" {% if settings.schedule == 'weekly' %}selected{% endif %}>Weekly</option></select></label></section>
+    <section id="tools"><h2>Tools</h2>{% for name,version in tool_versions.items() %}<div class="form-row"><div><strong>{{ name }}</strong><span>{{ version or 'Not available in this environment' }}</span></div><span class="tool-state {{ 'ready' if version else 'missing' }}">{{ 'Ready' if version else 'Missing' }}</span></div>{% endfor %}</section>
+    <section id="storage"><h2>Storage retention</h2><label class="form-row"><div><strong>History retention</strong><span>Applies to scan history and indexed evidence, not media files.</span></div><span class="field-suffix"><input name="retention_days" type="number" min="1" value="{{ settings.retention_days }}"> days</span></label><label class="form-row"><div><strong>Fallback language</strong><span>Used when a source stream does not declare a language.</span></div><input name="fallback_language" maxlength="3" value="{{ settings.fallback_language }}"></label></section>
+  </form>
+</div>
+<dialog id="library-dialog">
+  <form id="library-form">
+    <header><h2 id="library-dialog-title">Add library</h2><button class="icon-button" type="button" data-dialog-close aria-label="Close">×</button></header>
+    <input id="library-id" type="hidden">
+    <label>Name<input id="library-name" name="name" autocomplete="off" placeholder="Movies"></label>
+    <label>Path<input id="library-path" name="path" autocomplete="off" required placeholder="/media/movies"></label>
+    <label>Library type<select id="library-type" name="library_type"><option value="movie">Movies</option><option value="tv">Television</option><option value="mixed">Mixed</option></select></label>
+    <label class="checkbox"><input id="library-enabled" type="checkbox" checked> Include this library in scheduled scans</label>
+    <p class="form-error" id="library-error" role="alert"></p>
+    <footer><button class="button secondary" type="button" data-dialog-close>Cancel</button><button class="button" type="submit">Save library</button></footer>
+  </form>
+</dialog>
+{% endblock %}

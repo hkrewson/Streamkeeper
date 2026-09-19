@@ -1,0 +1,26 @@
+#!/bin/sh
+
+#=======================# macOS stat compatibility #=======================#
+#
+# Translate the one macOS file-mode query used by the frozen converter into
+# GNU stat syntax. All other calls pass through unchanged. POSIX sh is used
+# because this helper runs only inside the minimal Linux parity container.
+#
+#=======================# VARIABLES #=======================#
+
+REAL_STAT=/usr/bin/stat
+
+#======================# FUNCTIONS #=======================#
+
+print_file_mode() {
+    "$REAL_STAT" -c '%a' "$1"
+}
+
+#=========================# MAIN #==========================#
+
+if [ "$#" -eq 3 ] && [ "$1" = '-f' ] && [ "$2" = '%Lp' ]; then
+    print_file_mode "$3"
+    exit $?
+fi
+
+exec "$REAL_STAT" "$@"

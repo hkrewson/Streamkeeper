@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Library · Streamkeeper{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div><h1>Library</h1><p>{{ summary_counts.total }} indexed media files</p></div>
+  <div class="header-actions"><form method="get"><select id="library-scope" name="library_id" aria-label="Library"><option value="">All libraries</option>{% for library in libraries %}<option value="{{ library.id }}" {% if selected_library_id == library.id %}selected{% endif %}>{{ library.name }}</option>{% endfor %}</select>{% if active_filter != 'all' %}<input type="hidden" name="assessment" value="{{ active_filter }}">{% endif %}</form><button class="button secondary" id="toggle-paths" type="button">Show full paths</button><a class="button" href="/scans">Run a scan</a></div>
+</header>
+<section class="summary-strip" aria-label="Library filters">
+  <a href="/library{% if selected_library_id %}?library_id={{ selected_library_id }}{% endif %}" {% if active_filter == 'all' %}aria-current="true"{% endif %}><strong>{{ summary_counts.total }}</strong><span>All media</span></a>
+  <a href="/library?assessment=compatible{% if selected_library_id %}&library_id={{ selected_library_id }}{% endif %}" {% if active_filter == 'compatible' %}aria-current="true"{% endif %}><strong>{{ summary_counts.compatible }}</strong><span>Compatible</span></a>
+  <a href="/library?assessment=warning{% if selected_library_id %}&library_id={{ selected_library_id }}{% endif %}" {% if active_filter == 'warning' %}aria-current="true"{% endif %}><strong>{{ summary_counts.warning }}</strong><span>Needs review</span></a>
+  <a href="/library?assessment=action{% if selected_library_id %}&library_id={{ selected_library_id }}{% endif %}" {% if active_filter == 'action' %}aria-current="true"{% endif %}><strong>{{ summary_counts.action }}</strong><span>Action needed</span></a>
+</section>
+<section class="list" aria-label="Media files">
+  {% for asset in assets %}
+  <article class="media-row">
+    <div class="media-main">
+      <h2>{{ asset.title }}</h2>
+      <button class="path path-toggle" type="button" data-relative="{{ asset.relative_path }}" data-full="{{ asset.path }}">{{ asset.relative_path }}</button>
+      <p class="metadata">{{ asset.video_codec }} · {{ asset.resolution }} · {{ asset.audio_summary }}{% if asset.peak_bitrate_bps %} · Peak {{ (asset.peak_bitrate_bps / 1000000)|round(1) }} Mbps{% endif %}</p>
+    </div>
+    <span class="badge {{ asset.assessment }}">{{ {'compatible':'Compatible','warning':'Review','action':'Action needed'}[asset.assessment] }}</span>
+  </article>
+  {% else %}
+  {% if summary_counts.total %}<div class="empty"><h2>No media matches this filter</h2><p>Choose another assessment to see indexed media.</p><a class="button" href="/library{% if selected_library_id %}?library_id={{ selected_library_id }}{% endif %}">Show all media</a></div>{% else %}<div class="empty"><h2>No media indexed</h2><p>Add a library in Settings, then start a scan.</p><a class="button" href="/settings">Open settings</a></div>{% endif %}
+  {% endfor %}
+</section>
+{% endblock %}

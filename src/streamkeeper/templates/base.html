@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Streamkeeper{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='/app.css') }}">
+  <script defer src="{{ url_for('static', path='/app.js') }}"></script>
+</head>
+<body data-page="{{ page }}">
+  <aside class="sidebar">
+    <a class="product" href="/library"><span class="product-mark">SK</span><span>Streamkeeper</span></a>
+    <nav aria-label="Main navigation">
+      {% for destination, label in [('library','Library'),('scans','Scans'),('findings','Findings'),('reports','Reports'),('settings','Settings')] %}
+      <a href="/{{ destination }}" {% if page == destination %}aria-current="page"{% endif %}>
+        <span class="nav-icon" aria-hidden="true">{{ {'library':'▤','scans':'↻','findings':'◇','reports':'▥','settings':'⚙'}[destination] }}</span>{{ label }}
+        {% if destination == 'findings' and finding_counts.open %}<span class="nav-count">{{ finding_counts.open }}</span>{% endif %}
+      </a>
+      {% endfor %}
+    </nav>
+    <div class="sidebar-foot"><span class="status-dot"></span>Scanner ready</div>
+  </aside>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

@@ -1,0 +1,14 @@
+Analyze: /media/Fixture.mkv
+  Video: h264, yuv420p, SDR
+  Video action: copy (SDR H.264 is already Apple-compatible)
+  Existing audio tracks: 1 (all retained)
+  Existing subtitle tracks: 6
+  New audio: Russian E-AC3 5.1 at 640 kbps, sourced from track 1
+  Default audio: Russian E-AC3 5.1 (new)
+  Backup name: Fixture Original.mkv
+  Output name: Fixture.mkv
+  Evidence file: Fixture.conversion.txt
+  NFO update: none found (TXT evidence only)
+  Label 1: Russian DTS 5.1
+  Label 2: Russian E-AC3 5.1
+  DRY RUN: no encode, remux, or rename performed.

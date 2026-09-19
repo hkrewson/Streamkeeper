@@ -1,0 +1,27 @@
+Streamkeeper interface reference
+
+Navigation
+- The fixed sidebar keeps Library, Scans, Findings, Reports, and Settings available as distinct workflows.
+- The Findings count is the only navigation count because it signals work requiring attention.
+
+Library
+- The summary strip is a quick filter, not a repeated dashboard metric.
+- Clicking any displayed path, or the header button, toggles every row between library-relative and absolute paths.
+- Each row uses one assessment badge. Codec, resolution, audio, and peak bitrate remain plain inline metadata.
+
+Scans
+- A running scan appears as one flat status row.
+- Selecting a history row opens its phase, progress, failures, and latest activity in the inspector.
+- Deep bitrate analysis is opt-in and uses the same single scan lane.
+
+Findings
+- Open, New, Ignored, and Resolved are ordinary status filters.
+- Selecting a row opens evidence and the dry-run response in the inspector.
+
+Reports
+- Report selection lives in the page header.
+- Totals are written into the report heading and factual bars, without a KPI strip.
+
+Settings
+- In-page category navigation moves among flat form sections.
+- Tool health is shown beside each tool. Media remains read-only in web v1.

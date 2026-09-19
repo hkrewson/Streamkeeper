@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Reports · Streamkeeper{% endblock %}
+{% block content %}
+<header class="page-header"><div><h1>Reports</h1><p>Current library inventory and compatibility</p></div><div class="header-actions"><form method="get" class="report-controls"><select id="report-kind" name="report_kind" aria-label="Report"><option value="compatibility" {% if report_kind == 'compatibility' %}selected{% endif %}>Compatibility overview</option><option value="video" {% if report_kind == 'video' %}selected{% endif %}>Video codecs</option><option value="network" {% if report_kind == 'network' %}selected{% endif %}>Network readiness</option></select><select id="report-library-scope" name="library_id" aria-label="Library"><option value="">All libraries</option>{% for library in libraries %}<option value="{{ library.id }}" {% if selected_library_id == library.id %}selected{% endif %}>{{ library.name }}</option>{% endfor %}</select></form><a class="button secondary" href="/api/reports/compatibility.csv{% if selected_library_id %}?library_id={{ selected_library_id }}{% endif %}">Export CSV</a></div></header>
+
+{% if report_kind == 'video' %}
+<section class="report-header"><h2>Video codecs</h2><p>{{ report.total }} current media files grouped by codec and resolution</p></section>
+<div class="report-grid">
+  <section><h3>Codec</h3>{% set maximum=(report.video_codecs.values()|max if report.video_codecs else 1) %}{% for label,count in report.video_codecs.items() %}<div class="bar-row"><span>{{ label }}</span><div class="bar-track"><i style="width:{{ count / maximum * 100 }}%"></i></div><strong>{{ count }}</strong></div>{% else %}<p class="muted">No codec data is available.</p>{% endfor %}</section>
+  <section><h3>Resolution</h3>{% set maximum=(report.resolutions.values()|max if report.resolutions else 1) %}{% for label,count in report.resolutions.items() %}<div class="bar-row"><span>{{ label }}</span><div class="bar-track"><i style="width:{{ count / maximum * 100 }}%"></i></div><strong>{{ count }}</strong></div>{% else %}<p class="muted">No resolution data is available.</p>{% endfor %}</section>
+</div>
+<section class="report-table"><h3>Interpretation</h3><table><tbody><tr><td>H.264 / HEVC</td><td>Normally copied when no HDR normalization is required.</td></tr><tr><td>Other codecs</td><td>The dry-run planner evaluates whether HEVC conversion is needed.</td></tr><tr><td>Unknown</td><td>The latest probe did not identify a primary video stream.</td></tr></tbody></table></section>
+
+{% elif report_kind == 'network' %}
+<section class="report-header"><h2>Network readiness</h2><p>Measured peaks compared with the {{ report.network_ceiling_bps // 1000000 }} Mbps comfortable LAN ceiling</p></section>
+<div class="report-grid">
+  <section><h3>Measured readiness</h3>{% set maximum=(report.network.values()|max) or 1 %}{% for label,count in report.network.items() %}<div class="bar-row"><span>{{ label|replace('_',' ')|capitalize }}</span><div class="bar-track"><i style="width:{{ count / maximum * 100 }}%"></i></div><strong>{{ count }}</strong></div>{% endfor %}</section>
+  <section><h3>Thresholds</h3><table><tbody><tr><td>Comfortable</td><td>Below 80% of the configured ceiling</td></tr><tr><td>Near limit</td><td>80–100% of the configured ceiling</td></tr><tr><td>Over limit</td><td>Above the configured ceiling</td></tr><tr><td>Not measured</td><td>Run a deep scan to measure packet-level peaks</td></tr></tbody></table></section>
+</div>
+<section class="report-table"><h3>Highest measured peaks</h3><table><thead><tr><th>Title</th><th>Peak bitrate</th><th>Ceiling used</th><th>Assessment</th></tr></thead><tbody>{% for item in report.network_assets %}<tr><td>{{ item.title }}<span class="cell-subtitle">{{ item.relative_path }}</span></td><td>{{ '%.1f'|format(item.peak_bitrate_bps / 1000000) }} Mbps</td><td>{{ item.ceiling_percent }}%</td><td>{{ item.assessment|replace('_',' ')|capitalize }}</td></tr>{% else %}<tr><td colspan="4" class="empty-cell">No peak bitrate measurements are available.</td></tr>{% endfor %}</tbody></table></section>
+
+{% else %}
+<section class="report-header"><h2>Compatibility overview</h2><p>{{ report.total }} media files in the current index</p></section>
+<div class="report-grid">
+  <section><h3>Assessment</h3>{% set maximum=(report.assessments.values()|max if report.assessments else 1) %}{% for label,count in report.assessments.items() %}<div class="bar-row"><span>{{ label|replace('_',' ')|capitalize }}</span><div class="bar-track"><i style="width:{{ count / maximum * 100 }}%"></i></div><strong>{{ count }}</strong></div>{% else %}<p class="muted">Run a scan to populate this report.</p>{% endfor %}</section>
+  <section><h3>Video codecs</h3>{% set maximum=(report.video_codecs.values()|max if report.video_codecs else 1) %}{% for label,count in report.video_codecs.items() %}<div class="bar-row"><span>{{ label }}</span><div class="bar-track"><i style="width:{{ count / maximum * 100 }}%"></i></div><strong>{{ count }}</strong></div>{% else %}<p class="muted">No codec data is available.</p>{% endfor %}</section>
+</div>
+<section class="report-table"><h3>Report definitions</h3><table><tbody><tr><td>Compatible</td><td>No known change is needed for normal Apple playback.</td></tr><tr><td>Needs review</td><td>Playback may work, but a subtitle or metadata condition deserves attention.</td></tr><tr><td>Action needed</td><td>The dry-run planner recommends a video or audio compatibility change.</td></tr></tbody></table></section>
+{% endif %}
+{% endblock %}

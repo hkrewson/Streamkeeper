@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings without section rail · Streamkeeper mockup</title>
+  <link rel="stylesheet" href="../../src/streamkeeper/static/app.css">
+  <link rel="stylesheet" href="settings-no-rail.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="product" href="#"><span class="product-mark">SK</span><span>Streamkeeper</span></a>
+    <nav aria-label="Main navigation">
+      <a href="#"><span class="nav-icon">▤</span>Library</a>
+      <a href="#"><span class="nav-icon">↻</span>Scans</a>
+      <a href="#"><span class="nav-icon">◇</span>Findings<span class="nav-count">5</span></a>
+      <a href="#"><span class="nav-icon">▥</span>Reports</a>
+      <a href="#" aria-current="page"><span class="nav-icon">⚙</span>Settings</a>
+    </nav>
+    <div class="sidebar-foot"><span class="status-dot"></span>Scanner ready</div>
+  </aside>
+
+  <main>
+    <header class="page-header mock-header">
+      <div><h1>Settings</h1><p>Libraries, scanning, tools, and storage</p></div>
+      <button class="button" type="button">Save settings</button>
+    </header>
+
+    <form class="mock-settings-content">
+      <section id="libraries">
+        <h2>Libraries</h2>
+        <p>Media is read-only in the web application.</p>
+        <div class="form-row"><div><strong>Movies</strong><span>/media/movies</span></div><span>Movie</span></div>
+        <div class="form-row"><div><strong>Television</strong><span>/media/television</span></div><span>TV</span></div>
+      </section>
+
+      <section id="network">
+        <h2>Network profiles</h2>
+        <label class="form-row"><div><strong>Comfortable LAN ceiling</strong><span>Peak bitrate above this value creates a finding.</span></div><span class="field-suffix"><input type="number" value="900"> Mbps</span></label>
+      </section>
+
+      <section id="schedule">
+        <h2>Schedules</h2>
+        <label class="form-row"><div><strong>Automatic scan</strong><span>Manual remains the safe default for network storage.</span></div><select><option>Weekly</option><option>Daily</option><option>Manual only</option></select></label>
+      </section>
+
+      <section id="tools">
+        <h2>Tools</h2>
+        <div class="form-row"><div><strong>ffmpeg</strong><span>ffmpeg version 8.0</span></div><span class="tool-state">Ready</span></div>
+        <div class="form-row"><div><strong>ffprobe</strong><span>ffprobe version 8.0</span></div><span class="tool-state">Ready</span></div>
+        <div class="form-row"><div><strong>dovi_tool</strong><span>dovi_tool 2.3.3</span></div><span class="tool-state">Ready</span></div>
+      </section>
+
+      <section id="storage">
+        <h2>Storage retention</h2>
+        <label class="form-row"><div><strong>History retention</strong><span>Applies to scan history and indexed evidence, not media files.</span></div><span class="field-suffix"><input type="number" value="90"> days</span></label>
+        <label class="form-row"><div><strong>Fallback language</strong><span>Used when a source stream does not declare a language.</span></div><input maxlength="3" value="eng"></label>
+      </section>
+
+      <section id="access">
+        <h2>Administrator access</h2>
+        <div class="form-row"><div><strong>Authentication</strong><span>Set STREAMKEEPER_USER and STREAMKEEPER_PASSWORD in the container environment.</span></div><span>Environment controlled</span></div>
+      </section>
+    </form>
+  </main>
+</body>
+</html>

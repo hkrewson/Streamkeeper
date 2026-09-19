@@ -1,0 +1,33 @@
+.mock-header {
+  max-width: 920px;
+}
+
+.mock-settings-content {
+  max-width: 820px;
+  padding-top: 30px;
+}
+
+.mock-settings-content section {
+  scroll-margin-top: 20px;
+  margin-bottom: 38px;
+}
+
+.mock-settings-content h2 {
+  margin: 0;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--line);
+  font-size: 16px;
+}
+
+.mock-settings-content section > p {
+  margin: 7px 0 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .mock-header,
+  .mock-settings-content {
+    max-width: none;
+  }
+}

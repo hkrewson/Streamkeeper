@@ -1,0 +1,14 @@
+services:
+  streamkeeper:
+    build: .
+    container_name: streamkeeper
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      STREAMKEEPER_DB: /data/streamkeeper.sqlite3
+      STREAMKEEPER_USER: ${STREAMKEEPER_USER:-}
+      STREAMKEEPER_PASSWORD: ${STREAMKEEPER_PASSWORD:-}
+    volumes:
+      - ./data:/data
+      - ${MEDIA_PATH:-/volume1/video}:/media:ro

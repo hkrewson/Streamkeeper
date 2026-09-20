@@ -14,6 +14,7 @@ while moving behavior out of the frozen shell converter.
 | Real HEVC HDR10+, E-AC3 5.1, two SRT subtitles, four embedded JPEG covers | Read-only shell dry run, sanitized ffprobe snapshot, and a three-second off-library bitstream excerpt | Python identifies frame-level HDR10+ that the shell reports only as HDR10; `dovi_tool --drop-hdr10plus` removes dynamic metadata while preserving HDR10 mastering-display and content-light metadata |
 | Real HEVC SDR Plex featurette, AC3 2.0, VobSub | Sanitized ffprobe snapshot and an isolated full-duration copy | Video, audio, and all 34 VobSub packets survive byte-identically; duration and stream counts match, and the output receives the Plex `-featurette` suffix |
 | Synthetic H.264 SDR, FLAC 2.0 | Frozen-shell conversion and Python planned-command execution of isolated one-second fixtures | Commands match after path normalization; both outputs validate with the original FLAC retained and a labeled/default AAC 2.0 fallback added |
+| Synthetic frozen-shell dry-run matrix | Nine isolated generated cases: MPEG-2/PCM stereo, AAC 7.1, main-plus-commentary FLAC, mono FLAC, 4.0 PCM, missing audio, ASS, MOV_TEXT, and a Plex featurette | All structured decisions match except the two approved corrections; source ranking excludes commentary, missing language falls back to English, channel counts are not upmixed, subtitle actions match, and direct-file extra naming is preserved |
 | Synthetic H.264 SDR, PCM 5.1 | Python planned-command execution | PCM remains byte-identical; E-AC3 5.1/640 is added and made default without upmixing |
 | Synthetic ASS subtitle and embedded JPEG cover | Python planned-command execution | ASS remains byte-identical, an SRT fallback is added, and the cover survives extraction and re-attachment |
 | Synthetic MPEG-2 video with AAC 2.0 | Python planned-command execution | Video is converted to HEVC while the original AAC elementary stream remains byte-identical |
@@ -52,6 +53,9 @@ HDR base.
   AC3, AAC 5.1/2.0, TrueHD, DTS, E-AC3 Atmos 7.1, AAC 7.1, FLAC, PCM,
   mono, stereo, 3–5 channels, 6+ channels, commentary exclusion, source
   ranking, missing audio, and fallback language.
+- Direct CLI plans now infer the classification root above a recognized Plex
+  extra folder, so selecting one featurette file retains the same suffix as a
+  directory scan or web-library plan.
 - Semantic output validation now checks original and generated audio codecs and
   channels, labels, the single intended default, subtitle preservation and SRT
   fallbacks, chapters, attachments and embedded covers, duration, frame count,

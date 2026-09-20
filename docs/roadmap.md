@@ -71,14 +71,19 @@ CLI-compatible snapshots, removing direct database access from the pending
 full-library shadow review. Authorized HDR10+ and Dolby Vision 7 excerpts have
 confirmed metadata normalization, frame preservation, and the full remux path.
 Real PGS and VobSub payload preservation are also hash-verified. Full-library
-shadow review and off-library playback approval remain required.
+shadow planning is complete. Nine additional generated frozen-shell dry runs
+now cover incompatible video, stereo/mono/4.0 audio, commentary ranking,
+missing audio, ASS, MOV_TEXT, AAC 7.1, and direct-file Plex-extra naming.
+Command-vector comparison for the remaining conversion branches, a fresh
+deployed scan, and off-library playback approval remain required.
 
 The stored full-library baseline has completed a policy-and-planner shadow
 pass: 2,742 classifications match, 2,737 successful probes build plans without
 exceptions, and the five existing probe failures are unchanged. A fresh scan
 from the current deployed image remains the final catalog comparison.
 
-- Complete differential dry-run comparison against the frozen shell reference.
+- Complete normalized command-vector comparison for the remaining conversion
+  branches against isolated frozen-shell conversions.
 - Run a fresh read-only scan from the current deployed image and compare its
   exported snapshot with the accepted baseline.
 - Complete selected off-library playback tests before unlocking standalone CLI
@@ -103,7 +108,7 @@ of its cancellation request. Broader NAS load testing remains pending.
 - Synology successfully runs the published multi-architecture image.
 - A 2,729-file library scan completed and a second scan reused 2,725 successful
   probes while retrying four failed files.
-- FFmpeg, FFprobe, and checksum-verified `dovi_tool` 2.3.4 are available in the
-  container.
+- FFmpeg, FFprobe, checksum-verified `dovi_tool` 2.3.4, and FFmpeg's
+  `dovi_rpu` signaling filter are available in the container.
 - UTC timestamps are retained in storage and displayed using the configured
   browser, UTC, or fixed DST-aware time zone.

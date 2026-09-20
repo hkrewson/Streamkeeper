@@ -5,7 +5,7 @@ import json
 import sys
 from pathlib import Path
 
-from .discovery import classify, discover
+from .discovery import EXTRA_FOLDER_TYPES, classify, discover
 from .executor import ParityGateError, execute
 from .models import LibraryType
 from .planner import build_plan, render_text
@@ -76,7 +76,14 @@ def run_scan(args: argparse.Namespace) -> int:
 def plans_for(args: argparse.Namespace):
     target = Path(args.path).expanduser().resolve()
     library_type = LibraryType(args.library_type)
-    root = target.parent if target.is_file() else target
+    if target.is_file():
+        extra_parent = next(
+            (parent for parent in target.parents if parent.name.lower() in EXTRA_FOLDER_TYPES),
+            None,
+        )
+        root = extra_parent.parent if extra_parent else target.parent
+    else:
+        root = target
     for asset in discover(target, library_type):
         yield make_plan(Path(asset.path), root, library_type)
 

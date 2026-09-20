@@ -86,6 +86,31 @@ def test_plan_json_and_non_dry_conversion_gate(tmp_path, monkeypatch, capsys):
     assert "conversion remains locked" in capsys.readouterr().err
 
 
+def test_single_extra_file_uses_parent_above_plex_extra_folder_as_root(
+    tmp_path, monkeypatch, capsys
+):
+    movie = tmp_path / "Movie (2020)"
+    featurettes = movie / "Featurettes"
+    featurettes.mkdir(parents=True)
+    media = featurettes / "Behind the Scenes.mkv"
+    media.write_bytes(b"media")
+    monkeypatch.setattr(
+        "streamkeeper.cli.probe_file",
+        lambda path: ProbeSnapshot(
+            str(path),
+            "2026-01-01T00:00:00+00:00",
+            {},
+            [
+                {"index": 0, "codec_type": "video", "codec_name": "h264", "pix_fmt": "yuv420p", "color_transfer": "bt709", "disposition": {}},
+                {"index": 1, "codec_type": "audio", "codec_name": "flac", "channels": 1, "tags": {"language": "eng"}, "disposition": {}},
+            ],
+        ),
+    )
+
+    assert main(["plan", "--path", str(media), "--format", "json"]) == 0
+    assert json.loads(capsys.readouterr().out)["output_path"].endswith("-featurette.mkv")
+
+
 def test_compare_scans_returns_match_or_review_status(tmp_path, capsys):
     scan = [{
         "asset": {

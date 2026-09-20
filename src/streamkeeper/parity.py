@@ -73,6 +73,8 @@ def parse_legacy_dry_run(output: str) -> PlanningDecision:
             if not match:
                 continue
             setattr(decision, attribute, converter(match.group(1)))
+            if attribute == "default_audio" and decision.default_audio == "none":
+                decision.default_audio = None
             if attribute == "video_action":
                 decision.video_reason = match.group(2)
             break

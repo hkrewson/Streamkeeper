@@ -140,6 +140,23 @@
     window.location.href = '/scans';
   });
 
+  document.querySelectorAll('[data-cancel-scan]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const error = document.querySelector('.scan-action-error');
+      button.disabled = true;
+      button.textContent = 'Cancelling…';
+      const response = await fetch(`/api/scans/${button.dataset.cancelScan}/cancel`, { method: 'POST' });
+      if (!response.ok) {
+        const detail = await response.json();
+        if (error) error.textContent = detail.detail || 'The scan could not be cancelled.';
+        button.disabled = false;
+        button.textContent = 'Cancel scan';
+        return;
+      }
+      window.location.reload();
+    });
+  });
+
   document.querySelector('.finding-status')?.addEventListener('click', async (event) => {
     const button = event.currentTarget;
     const response = await fetch(`/api/findings/${button.dataset.finding}`, {

@@ -71,12 +71,13 @@ main { margin-left: 238px; min-height: 100vh; padding: 34px 42px 60px; }
 .empty h2 { margin: 0 0 8px; font-size: 18px; }
 .empty p { margin: 0 0 22px; color: var(--muted); }
 
-.active-scan { display: grid; grid-template-columns: auto minmax(180px, 1fr) minmax(200px, 36%); gap: 13px; align-items: center; padding: 14px 2px; border-bottom: 1px solid var(--line); }
+.active-scan { display: grid; grid-template-columns: auto minmax(180px, 1fr) minmax(200px, 36%) auto; gap: 13px; align-items: center; padding: 14px 2px; border-bottom: 1px solid var(--line); }
 .active-scan div { display: grid; gap: 3px; font-size: 13px; }
 .active-scan span { color: var(--muted); font-size: 12px; }
 .spinner { width: 15px; height: 15px; border: 2px solid #b8c5bd; border-top-color: var(--green); border-radius: 50%; animation: spin .9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 progress { width: 100%; height: 7px; border: 0; accent-color: var(--green); }
+.scan-action-error { margin: 6px 0 0; }
 
 .split-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; min-height: 570px; margin-top: 20px; border-top: 1px solid var(--line); }
 .findings-layout { grid-template-columns: minmax(0, 1fr) 420px; }
@@ -241,4 +242,6 @@ dialog footer { justify-content: flex-end; gap: 8px; margin-top: 22px; }
   .summary-strip a:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
   .header-actions { flex-direction: column; align-items: flex-end; }
   .report-controls { flex-direction: column; }
+  .active-scan { grid-template-columns: auto 1fr auto; }
+  .active-scan progress { grid-column: 1 / -1; }
 }

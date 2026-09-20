@@ -448,6 +448,18 @@ def create_app(database_path: str | Path | None = None, *, start_worker: bool = 
         scan["exclusions"] = database.scan_exclusions(scan_id)
         return scan
 
+    @app.post("/api/scans/{scan_id}/cancel", dependencies=[Depends(authorize)])
+    def api_cancel_scan(scan_id: int):
+        active_worker: ScanWorker | None = getattr(app.state, "worker", None)
+        if active_worker is None:
+            raise HTTPException(503, "Scanner is not running")
+        try:
+            return active_worker.cancel(scan_id)
+        except KeyError as exc:
+            raise HTTPException(404, str(exc.args[0])) from exc
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
+
     @app.get("/api/scans/{scan_id}/snapshot.json", dependencies=[Depends(authorize)])
     def api_scan_snapshot(scan_id: int):
         scan = database.scan(scan_id)

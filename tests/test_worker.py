@@ -4,7 +4,7 @@ from pathlib import Path
 
 from streamkeeper.database import Database
 from streamkeeper.models import LibraryType, ProbeSnapshot, ScanRun
-from streamkeeper.probe import ProbeError
+from streamkeeper.probe import ProbeCancelled, ProbeError
 from streamkeeper.worker import ScanWorker, due_libraries
 
 
@@ -90,7 +90,7 @@ def test_incremental_scan_reuses_unchanged_probe_but_deep_scan_does_not(tmp_path
     library_id = db.add_library("Movies", str(tmp_path), "movie")
     calls: list[bool] = []
 
-    def probe(path, *, deep=False):
+    def probe(path, *, deep=False, cancel_event=None):
         calls.append(deep)
         return ProbeSnapshot(str(path), "2026-01-01T00:00:00Z", {"duration": "60"}, [])
 
@@ -161,7 +161,7 @@ def test_incremental_scan_reprobes_changed_file(tmp_path: Path, monkeypatch):
     library_id = db.add_library("Movies", str(tmp_path), "movie")
     calls: list[str] = []
 
-    def probe(path, *, deep=False):
+    def probe(path, *, deep=False, cancel_event=None):
         calls.append(Path(path).read_text())
         return ProbeSnapshot(str(path), "2026-01-01T00:00:00Z", {"duration": "60"}, [])
 
@@ -193,7 +193,7 @@ def test_worker_applies_global_and_library_exclusions_and_records_them(tmp_path:
     db.update_library(library_id, excluded_files=["*-workprint.mkv"])
     monkeypatch.setattr(
         "streamkeeper.worker.probe_file",
-        lambda path, *, deep=False: ProbeSnapshot(str(path), "2026-01-01T00:00:00Z", {}, []),
+        lambda path, *, deep=False, cancel_event=None: ProbeSnapshot(str(path), "2026-01-01T00:00:00Z", {}, []),
     )
     worker = ScanWorker(db)
     try:
@@ -212,6 +212,85 @@ def test_worker_applies_global_and_library_exclusions_and_records_them(tmp_path:
         }
         assert any("Excluded 3 paths" in item["message"] for item in db.scan_events(scan_id))
     finally:
+        worker.close()
+
+
+def test_running_scan_cancellation_reaches_probe_and_is_not_a_failure(tmp_path: Path, monkeypatch):
+    media = tmp_path / "Movie.mkv"
+    media.write_bytes(b"synthetic media")
+    db = Database(tmp_path / "worker.sqlite3")
+    library_id = db.add_library("Movies", str(tmp_path), "movie")
+    started = threading.Event()
+
+    def blocking_probe(path, *, deep=False, cancel_event=None):
+        assert cancel_event is not None
+        started.set()
+        assert cancel_event.wait(2)
+        raise ProbeCancelled("Probe cancelled")
+
+    monkeypatch.setattr("streamkeeper.worker.probe_file", blocking_probe)
+    worker = ScanWorker(db)
+    try:
+        scan_id = worker.enqueue(
+            library_id=library_id, path=str(tmp_path), library_type=LibraryType.MOVIE, deep=True,
+        )
+        assert started.wait(2)
+        requested = worker.cancel(scan_id)
+        assert requested["phase"] in {"cancelling", "cancelled"}
+        worker.tasks.join()
+
+        scan = db.scan(scan_id)
+        assert scan["status"] == "cancelled"
+        assert scan["phase"] == "cancelled"
+        assert scan["failed_files"] == 0
+        assert db.findings() == []
+        assert [event["message"] for event in db.scan_events(scan_id)][-2:] == [
+            "Cancellation requested", "Scan cancelled",
+        ]
+    finally:
+        worker.close()
+
+
+def test_queued_scan_can_be_cancelled_before_probe_work_starts(tmp_path: Path, monkeypatch):
+    first_root = tmp_path / "one"
+    second_root = tmp_path / "two"
+    first_root.mkdir()
+    second_root.mkdir()
+    (first_root / "One.mkv").write_bytes(b"one")
+    (second_root / "Two.mkv").write_bytes(b"two")
+    db = Database(tmp_path / "worker.sqlite3")
+    first_library = db.add_library("One", str(first_root), "movie")
+    second_library = db.add_library("Two", str(second_root), "movie")
+    started = threading.Event()
+    release = threading.Event()
+    probed: list[str] = []
+
+    def blocking_probe(path, *, deep=False, cancel_event=None):
+        probed.append(Path(path).name)
+        started.set()
+        assert release.wait(2)
+        return ProbeSnapshot(str(path), "2026-01-01T00:00:00Z", {}, [])
+
+    monkeypatch.setattr("streamkeeper.worker.probe_file", blocking_probe)
+    worker = ScanWorker(db)
+    try:
+        worker.enqueue(
+            library_id=first_library, path=str(first_root), library_type=LibraryType.MOVIE,
+        )
+        assert started.wait(2)
+        queued = worker.enqueue(
+            library_id=second_library, path=str(second_root), library_type=LibraryType.MOVIE,
+        )
+        cancelled = worker.cancel(queued)
+        assert cancelled["status"] == "cancelled"
+        release.set()
+        worker.tasks.join()
+
+        assert probed == ["One.mkv"]
+        assert db.scan(queued)["status"] == "cancelled"
+        assert db.scan_events(queued)[-1]["message"] == "Scan cancelled before it started"
+    finally:
+        release.set()
         worker.close()
 
 

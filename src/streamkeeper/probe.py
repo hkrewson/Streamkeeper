@@ -3,8 +3,11 @@ from __future__ import annotations
 import csv
 import json
 import math
+import queue
 import shutil
 import subprocess
+import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -13,6 +16,42 @@ from .models import ProbeSnapshot
 
 class ProbeError(RuntimeError):
     pass
+
+
+class ProbeCancelled(ProbeError):
+    pass
+
+
+def _stop_process(process: subprocess.Popen) -> None:
+    if process.poll() is not None:
+        return
+    process.terminate()
+    try:
+        process.wait(timeout=2)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait()
+
+
+def _run_cancellable(
+    command: list[str], *, timeout: int, cancel_event: threading.Event | None,
+) -> subprocess.CompletedProcess[str]:
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    deadline = time.monotonic() + timeout
+    try:
+        while True:
+            if cancel_event is not None and cancel_event.is_set():
+                raise ProbeCancelled("Probe cancelled")
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise subprocess.TimeoutExpired(command, timeout)
+            try:
+                stdout, stderr = process.communicate(timeout=min(0.2, remaining))
+                return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+            except subprocess.TimeoutExpired:
+                continue
+    finally:
+        _stop_process(process)
 
 
 def require_tool(name: str) -> str:
@@ -70,7 +109,10 @@ def tool_status(name: str) -> dict[str, str | bool | None]:
     }
 
 
-def probe_file(path: str | Path, *, deep: bool = False, timeout: int = 300) -> ProbeSnapshot:
+def probe_file(
+    path: str | Path, *, deep: bool = False, timeout: int = 300,
+    cancel_event: threading.Event | None = None,
+) -> ProbeSnapshot:
     media_path = Path(path).expanduser().resolve()
     executable = require_tool("ffprobe")
     captured_at = datetime.now(timezone.utc).isoformat()
@@ -86,7 +128,7 @@ def probe_file(path: str | Path, *, deep: bool = False, timeout: int = 300) -> P
         str(media_path),
     ]
     try:
-        result = subprocess.run(command, capture_output=True, text=True, timeout=timeout, check=False)
+        result = _run_cancellable(command, timeout=timeout, cancel_event=cancel_event)
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise ProbeError(str(exc)) from exc
     if result.returncode != 0:
@@ -100,8 +142,11 @@ def probe_file(path: str | Path, *, deep: bool = False, timeout: int = 300) -> P
         media_path,
         executable=executable,
         timeout=timeout,
+        cancel_event=cancel_event,
     )
-    peak = measure_peak_bitrate(media_path, timeout=max(timeout, 3600)) if deep else None
+    peak = measure_peak_bitrate(
+        media_path, timeout=max(timeout, 3600), cancel_event=cancel_event,
+    ) if deep else None
     return ProbeSnapshot(
         path=str(media_path),
         captured_at=captured_at,
@@ -119,6 +164,7 @@ def _merge_first_video_frame_side_data(
     *,
     executable: str,
     timeout: int,
+    cancel_event: threading.Event | None,
 ) -> None:
     video = next(
         (
@@ -142,14 +188,10 @@ def _merge_first_video_frame_side_data(
         str(media_path),
     ]
     try:
-        result = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            check=False,
-        )
+        result = _run_cancellable(command, timeout=timeout, cancel_event=cancel_event)
         frame_data = json.loads(result.stdout) if result.returncode == 0 else {}
+    except ProbeCancelled:
+        raise
     except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError):
         return
     frames = frame_data.get("frames", [])
@@ -166,7 +208,10 @@ def _merge_first_video_frame_side_data(
         video["side_data_list"] = existing
 
 
-def measure_peak_bitrate(path: str | Path, *, window_seconds: int = 1, timeout: int = 3600) -> int:
+def measure_peak_bitrate(
+    path: str | Path, *, window_seconds: int = 1, timeout: int = 3600,
+    cancel_event: threading.Event | None = None,
+) -> int:
     """Return the largest packet-byte total in a wall-clock window as bits/second."""
     executable = require_tool("ffprobe")
     command = [
@@ -180,11 +225,47 @@ def measure_peak_bitrate(path: str | Path, *, window_seconds: int = 1, timeout: 
         "csv=p=0",
         str(Path(path).expanduser().resolve()),
     ]
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
     buckets: dict[int, int] = {}
-    try:
+    lines: queue.Queue[str | None] = queue.Queue(maxsize=256)
+    reader_stop = threading.Event()
+
+    def read_lines() -> None:
         assert process.stdout is not None
-        for row in csv.reader(process.stdout):
+        for line in process.stdout:
+            while not reader_stop.is_set():
+                try:
+                    lines.put(line, timeout=0.2)
+                    break
+                except queue.Full:
+                    continue
+            if reader_stop.is_set():
+                return
+        while not reader_stop.is_set():
+            try:
+                lines.put(None, timeout=0.2)
+                return
+            except queue.Full:
+                continue
+
+    reader = threading.Thread(target=read_lines, name="streamkeeper-ffprobe-output", daemon=True)
+    reader.start()
+    deadline = time.monotonic() + timeout
+    stderr = ""
+    try:
+        while True:
+            if cancel_event is not None and cancel_event.is_set():
+                raise ProbeCancelled("Probe cancelled")
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise ProbeError("ffprobe packet analysis timed out")
+            try:
+                line = lines.get(timeout=min(0.2, remaining))
+            except queue.Empty:
+                continue
+            if line is None:
+                break
+            row = next(csv.reader([line]), [])
             if len(row) < 3:
                 continue
             timestamp_raw = row[0] if row[0] not in {"", "N/A"} else row[1]
@@ -196,15 +277,15 @@ def measure_peak_bitrate(path: str | Path, *, window_seconds: int = 1, timeout: 
             bucket = math.floor(timestamp / window_seconds)
             buckets[bucket] = buckets.get(bucket, 0) + size
         try:
-            _, stderr = process.communicate(timeout=timeout)
+            process.wait(timeout=max(0.1, deadline - time.monotonic()))
         except subprocess.TimeoutExpired as exc:
-            process.kill()
-            process.communicate()
             raise ProbeError("ffprobe packet analysis timed out") from exc
+        assert process.stderr is not None
+        stderr = process.stderr.read()
     finally:
-        if process.poll() is None:
-            process.kill()
-            process.communicate()
+        reader_stop.set()
+        _stop_process(process)
+        reader.join(timeout=2)
     if process.returncode != 0:
         raise ProbeError((stderr or "ffprobe packet analysis failed").strip())
     return max(buckets.values(), default=0) * 8 // window_seconds

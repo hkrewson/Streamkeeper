@@ -88,6 +88,9 @@ the update, backup, restore, and rollback guide in
 
 The web application provides Library, Scans, Findings, Reports, and Settings,
 plus JSON APIs under `/api`. It intentionally has no conversion-execution API.
+Queued and running scans can be cancelled from the Scans page; cancellation is
+forwarded to the active FFprobe process and is recorded separately from probe
+failures.
 Set `STREAMKEEPER_USER` and `STREAMKEEPER_PASSWORD` to enable HTTP Basic
 authentication. Authentication is disabled for trusted local-network evaluation
 only when both are omitted. Supplying just one fails closed with a service error

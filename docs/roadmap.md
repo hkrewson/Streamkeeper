@@ -80,8 +80,9 @@ Status: the standalone CLI completed read-only packet analysis over the mounted
 SMB library for a 53.6-second extra and a 25.4-minute, 2.34 GB feature. The
 feature completed in 104 seconds and measured a 24.73 Mb/s peak. Interrupting a
 repeat run stopped the child FFprobe process; the CLI now reports cancellation
-without displaying a traceback. Web-worker cancellation and broader NAS load
-testing remain pending.
+without displaying a traceback. Queued and running web scans can now be
+cancelled from the Scans page; a live SMB deep probe stopped within 1.5 seconds
+of its cancellation request. Broader NAS load testing remains pending.
 
 - Measure peak bitrate on a small representative directory first.
 - Confirm network reporting, runtime, cancellation, and NAS load.

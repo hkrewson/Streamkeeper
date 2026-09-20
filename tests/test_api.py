@@ -188,6 +188,36 @@ def test_completed_scan_snapshot_is_downloadable_in_cli_comparison_format(tmp_pa
         assert "Export scan snapshot" in page.text
 
 
+def test_active_scan_can_be_cancelled_from_scans_page(tmp_path: Path):
+    app = create_app(tmp_path / "web.sqlite3", start_worker=False)
+    db = app.state.database
+    library_id = db.add_library("Movies", str(tmp_path), "movie")
+    scan_id = db.create_scan(
+        ScanRun(None, library_id, str(tmp_path), LibraryType.MOVIE, True, status="running")
+    )
+
+    class Worker:
+        def cancel(self, requested_id: int):
+            assert requested_id == scan_id
+            db.update_scan(scan_id, status="cancelled", phase="cancelled")
+            return db.scan(scan_id)
+
+    app.state.worker = Worker()
+    with TestClient(app) as client:
+        page = client.get(f"/scans?selected={scan_id}")
+        assert f'data-cancel-scan="{scan_id}"' in page.text
+        response = client.post(f"/api/scans/{scan_id}/cancel")
+        assert response.status_code == 200
+        assert response.json()["status"] == "cancelled"
+
+
+def test_scan_cancellation_requires_a_running_worker(tmp_path: Path):
+    app = create_app(tmp_path / "web.sqlite3", start_worker=False)
+    with TestClient(app) as client:
+        response = client.post("/api/scans/1/cancel")
+        assert response.status_code == 503
+
+
 def test_library_scope_and_assessment_counts(tmp_path: Path):
     app = create_app(tmp_path / "web.sqlite3", start_worker=False)
     db = app.state.database

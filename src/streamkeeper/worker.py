@@ -11,7 +11,7 @@ from .database import Database
 from .discovery import discover_with_exclusions
 from .models import CompatibilityFinding, LibraryType, ProbeSnapshot, ScanRun
 from .policy import findings_for
-from .probe import ProbeError, probe_file
+from .probe import ProbeCancelled, ProbeError, probe_file
 
 
 def now() -> str:
@@ -64,10 +64,13 @@ class ScanWorker:
         self.database = database
         self.tasks: queue.Queue[ScanTask | None] = queue.Queue()
         self.stop_event = threading.Event()
+        self.cancellations: dict[int, threading.Event] = {}
+        self.cancellation_lock = threading.Lock()
         self.thread = threading.Thread(target=self._run, name="streamkeeper-scanner", daemon=True)
         self.scheduler = threading.Thread(target=self._schedule, name="streamkeeper-scheduler", daemon=True)
         self.database.apply_retention()
         for scan in self.database.recover_scan_tasks():
+            self._cancellation_event(int(scan["id"]))
             self.tasks.put(
                 ScanTask(
                     int(scan["id"]), scan["library_id"], scan["path"],
@@ -91,7 +94,38 @@ class ScanWorker:
         label = "Deep scan" if deep else "Scan"
         self.database.add_scan_event(scan_id, f"{label} queued ({trigger})")
         self.tasks.put(ScanTask(scan_id, library_id, run.path, library_type, deep))
+        self._cancellation_event(scan_id)
         return scan_id
+
+    def _cancellation_event(self, scan_id: int) -> threading.Event:
+        with self.cancellation_lock:
+            return self.cancellations.setdefault(scan_id, threading.Event())
+
+    def cancel(self, scan_id: int) -> dict:
+        scan = self.database.scan(scan_id)
+        if not scan:
+            raise KeyError("Scan not found")
+        if scan["status"] not in {"queued", "running"}:
+            raise ValueError("Only queued or running scans can be cancelled")
+        cancellation = self._cancellation_event(scan_id)
+        already_requested = cancellation.is_set()
+        if scan["status"] == "queued":
+            cancellation.set()
+            self._mark_cancelled(scan_id, "Scan cancelled before it started")
+        elif not already_requested:
+            self.database.update_scan(scan_id, phase="cancelling", message="Cancellation requested")
+            self.database.add_scan_event(scan_id, "Cancellation requested", "warning")
+            cancellation.set()
+        return self.database.scan(scan_id) or scan
+
+    def _mark_cancelled(self, scan_id: int, message: str = "Scan cancelled") -> None:
+        scan = self.database.scan(scan_id)
+        if not scan or scan["status"] == "cancelled":
+            return
+        self.database.update_scan(
+            scan_id, status="cancelled", phase="cancelled", finished_at=now(), message=message,
+        )
+        self.database.add_scan_event(scan_id, message, "warning")
 
     def close(self) -> None:
         self.stop_event.set()
@@ -116,11 +150,23 @@ class ScanWorker:
             try:
                 if task is None:
                     return
+                scan = self.database.scan(task.scan_id)
+                cancellation = self._cancellation_event(task.scan_id)
+                if cancellation.is_set() or (scan and scan["status"] == "cancelled"):
+                    self._mark_cancelled(task.scan_id, "Scan cancelled before it started")
+                    continue
                 self._scan(task)
             finally:
+                if task is not None:
+                    with self.cancellation_lock:
+                        self.cancellations.pop(task.scan_id, None)
                 self.tasks.task_done()
 
     def _scan(self, task: ScanTask) -> None:
+        cancellation = self._cancellation_event(task.scan_id)
+        if cancellation.is_set():
+            self._mark_cancelled(task.scan_id, "Scan cancelled before it started")
+            return
         self.database.update_scan(task.scan_id, status="running", started_at=now(), phase="discovery", message="Finding media files")
         self.database.add_scan_event(task.scan_id, "Scan started; discovering media files")
         try:
@@ -143,6 +189,9 @@ class ScanWorker:
             self.database.update_scan(task.scan_id, status="failed", finished_at=now(), message=str(exc))
             self.database.add_scan_event(task.scan_id, f"Discovery failed: {exc}", "error")
             return
+        if cancellation.is_set():
+            self._mark_cancelled(task.scan_id)
+            return
         self.database.update_scan(
             task.scan_id, phase="probing", total_files=len(assets),
             excluded_paths=len(discovery.exclusions), message="Reading stream metadata",
@@ -159,6 +208,9 @@ class ScanWorker:
         state_counts = {"new": 0, "changed": 0, "unchanged": 0}
         completed_assets: list[tuple[int, set[str]]] = []
         for index, asset in enumerate(assets, 1):
+            if cancellation.is_set():
+                self._mark_cancelled(task.scan_id)
+                return
             asset_state = self.database.asset_state(task.library_id, asset)
             state_counts[asset_state] += 1
             try:
@@ -166,7 +218,9 @@ class ScanWorker:
                 record_probe = snapshot is None
                 if snapshot is None:
                     probed += 1
-                    snapshot = probe_file(asset.path, deep=task.deep)
+                    snapshot = probe_file(
+                        asset.path, deep=task.deep, cancel_event=cancellation,
+                    )
                 else:
                     reused += 1
                 settings = self.database.settings()
@@ -176,6 +230,9 @@ class ScanWorker:
                     record_probe=record_probe,
                 )
                 completed_assets.append((asset_id, {finding.rule_id for finding in findings}))
+            except ProbeCancelled:
+                self._mark_cancelled(task.scan_id)
+                return
             except (ProbeError, OSError, ValueError) as exc:
                 failed += 1
                 snapshot = ProbeSnapshot(asset.path, now(), {}, [], error=str(exc))
@@ -191,6 +248,9 @@ class ScanWorker:
                 unchanged_files=state_counts["unchanged"], probed_files=probed,
                 reused_probes=reused, message=asset.relative_path,
             )
+        if cancellation.is_set():
+            self._mark_cancelled(task.scan_id)
+            return
         for asset_id, seen_rules in completed_assets:
             self.database.resolve_absent_findings(asset_id, seen_rules)
         removed = self.database.resolve_unseen_asset_findings(task.library_id, task.scan_id)

@@ -46,7 +46,7 @@ def execute_controlled(
     evidence = Path(plan.evidence_path)
     nfo = Path(plan.nfo_path) if plan.nfo_path else None
     lock = source.with_name(f".{source.name}.streamkeeper.lock")
-    staged_output = Path(plan.normalized_commands[-1][-1])
+    staged_output = _planned_staged_output(plan)
     staged_evidence = evidence.with_name(f".{evidence.name}.staged")
     staged_nfo = nfo.with_name(f".{nfo.name}.staged") if nfo else None
     temporary_paths = _command_temporary_paths(plan.normalized_commands, source.parent)
@@ -172,6 +172,16 @@ def _run_command(command: list[str]) -> None:
     if result.returncode != 0:
         detail = (result.stderr or result.stdout or "command failed").strip()
         raise ConversionExecutionError(detail[-4000:])
+
+
+def _planned_staged_output(plan: ConversionPlan) -> Path:
+    if plan.video_action == "error":
+        raise ConversionExecutionError(
+            f"conversion plan is not executable: {plan.video_reason}"
+        )
+    if not plan.normalized_commands or not plan.normalized_commands[-1]:
+        raise ConversionExecutionError("conversion plan has no command vectors")
+    return Path(plan.normalized_commands[-1][-1])
 
 
 def _preflight(

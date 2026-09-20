@@ -4,6 +4,7 @@ import json
 import shutil
 import subprocess
 import xml.etree.ElementTree as ET
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -93,6 +94,35 @@ def test_controlled_executor_refuses_insufficient_space_without_encoding(tmp_pat
         execute_controlled(plan, minimum_free_bytes=10**30)
     assert file_sha256(source) == original_hash
     assert not Path(plan.backup_path).exists()
+
+
+def test_controlled_executor_refuses_an_unsafe_plan_before_touching_source(tmp_path: Path):
+    source, _nfo, plan = fixture_plan(tmp_path)
+    original_hash = file_sha256(source)
+    unsafe = replace(
+        plan,
+        video_action="error",
+        video_reason="Dolby Vision profile 8 compatibility ID 2 is not a safe Apple target",
+        normalized_commands=[],
+    )
+
+    with pytest.raises(ConversionExecutionError, match="not executable.*compatibility ID 2"):
+        execute_controlled(unsafe, minimum_free_bytes=0)
+
+    assert file_sha256(source) == original_hash
+    assert not source.with_name(f".{source.name}.streamkeeper.lock").exists()
+    assert not Path(plan.backup_path).exists()
+
+
+def test_controlled_executor_reports_an_empty_command_plan_cleanly(tmp_path: Path):
+    source, _nfo, plan = fixture_plan(tmp_path)
+    empty = replace(plan, normalized_commands=[])
+
+    with pytest.raises(ConversionExecutionError, match="has no command vectors"):
+        execute_controlled(empty, minimum_free_bytes=0)
+
+    assert source.is_file()
+    assert not source.with_name(f".{source.name}.streamkeeper.lock").exists()
 
 
 def test_controlled_executor_refuses_an_existing_lock(tmp_path: Path):

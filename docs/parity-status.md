@@ -47,6 +47,12 @@ removing only HDR10+ metadata. This intentional correction implements the
 approved requirement to normalize non-native HDR to an Apple-compatible native
 HDR base.
 
+When E-AC3 5.1 already exists, Python stops audio fallback planning immediately,
+makes that track the compatibility default, and reports that a matching stream
+already exists. The frozen shell reaches the same no-conversion outcome but can
+describe it as having no eligible conversion source. The Python wording is an
+intentional clarification of the approved target-exists rule.
+
 ## Completed migration work
 
 - The audio policy matrix is covered by dedicated tests for existing E-AC3,

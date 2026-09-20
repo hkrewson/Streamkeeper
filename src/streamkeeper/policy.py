@@ -164,6 +164,23 @@ def plan_audio(snapshot: ProbeSnapshot, fallback_language: str = "eng") -> Audio
     streams = audio_streams(snapshot)
     chosen = best_audio_source(streams)
     existing_default = default_audio_ordinal(streams)
+    existing_eac3 = next(
+        (
+            index
+            for index, stream in enumerate(streams)
+            if stream.get("codec_name") == "eac3"
+            and int_value(stream.get("channels")) == 6
+            and not audio_excluded(stream)
+        ),
+        None,
+    )
+    if existing_eac3 is not None:
+        return AudioPlan(
+            action="none",
+            source_ordinal=existing_eac3,
+            default_ordinal=existing_eac3,
+            reason="matching compatibility stream already exists",
+        )
     if not chosen:
         compatible_exists = any(
             stream.get("codec_name") == "aac"

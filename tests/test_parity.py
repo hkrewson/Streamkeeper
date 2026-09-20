@@ -105,6 +105,10 @@ def test_sanitized_real_hdr10plus_fixture_records_approved_policy_correction(tmp
             "candidate": "retain HDR10 base and remove HDR10+ metadata",
         },
         "hdr_mode": {"reference": "HDR10", "candidate": "HDR10 + HDR10+"},
+        "new_audio_reason": {
+            "reference": "no eligible conversion source",
+            "candidate": "matching compatibility stream already exists",
+        },
     }
     dovi_command = next(command for command in plan.normalized_commands if command[0] == "dovi_tool")
     assert dovi_command[1:3] == ["--drop-hdr10plus", "convert"]

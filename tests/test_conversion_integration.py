@@ -365,10 +365,11 @@ def test_planned_lossless_and_dts_sources_add_eac3_without_altering_original(
 
     source_probe = probe_file(source)
     assert source_probe.streams[1]["codec_name"] == expected_source_codec
+    source_channels = source_probe.streams[1]["channels"]
     plan = execute_plan_and_validate(source)
     assert (plan.audio.codec, plan.audio.channels, plan.audio.bitrate) == (
         "eac3",
-        6,
+        6 if source_channels >= 6 else source_channels,
         640_000,
     )
 

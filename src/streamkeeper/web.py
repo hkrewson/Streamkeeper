@@ -448,6 +448,23 @@ def create_app(database_path: str | Path | None = None, *, start_worker: bool = 
         scan["exclusions"] = database.scan_exclusions(scan_id)
         return scan
 
+    @app.get("/api/scans/{scan_id}/snapshot.json", dependencies=[Depends(authorize)])
+    def api_scan_snapshot(scan_id: int):
+        scan = database.scan(scan_id)
+        if not scan:
+            raise HTTPException(404, "Scan not found")
+        if scan["status"] not in {"completed", "completed_with_errors"}:
+            raise HTTPException(409, "Only completed scans can be exported")
+        try:
+            rows = database.scan_snapshot(scan_id)
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        filename = f"streamkeeper-scan-{scan_id}.json"
+        return JSONResponse(
+            rows,
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
     @app.get("/api/findings", dependencies=[Depends(authorize)])
     def api_findings(status_filter: str | None = None, library_id: int | None = None):
         if library_id is not None and not database.library(library_id):

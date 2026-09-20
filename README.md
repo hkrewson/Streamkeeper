@@ -109,6 +109,16 @@ launcher for the Python CLI. The policy contract is in `docs/policy-matrix.md`.
 Current differential results and unresolved policy questions are recorded in
 `docs/parity-status.md`.
 
+Completed runs now offer **Export scan snapshot** in the Scans inspector. The
+download uses the standalone CLI's stable scan format, so two exported runs can
+be compared without media writes or database access:
+
+```zsh
+streamkeeper compare-scans \
+  --reference streamkeeper-scan-1.json \
+  --candidate streamkeeper-scan-2.json
+```
+
 The ordered implementation and deployment work is tracked in
 `docs/roadmap.md`.
 

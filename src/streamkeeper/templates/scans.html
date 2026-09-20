@@ -21,6 +21,9 @@
       <div><dt>Failures</dt><dd>{{ selected_scan.failed_files }}</dd></div>
       <div><dt>Excluded paths</dt><dd>{{ selected_scan.excluded_paths }}</dd></div>
     </dl>
+    {% if selected_scan.status in ['completed', 'completed_with_errors'] %}
+    <p><a class="button secondary" href="/api/scans/{{ selected_scan.id }}/snapshot.json" download>Export scan snapshot</a></p>
+    {% endif %}
     <h3>Changes</h3>
     <dl>
       <div><dt>New</dt><dd>{{ selected_scan.new_files }}</dd></div>

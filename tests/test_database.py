@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from streamkeeper.database import Database
 from streamkeeper.discovery import DiscoveryExclusion
 from streamkeeper.models import CompatibilityFinding, LibraryType, MediaAsset, ProbeSnapshot, ScanRun
@@ -20,6 +22,47 @@ def test_findings_persist_then_resolve(tmp_path: Path):
     db.resolve_absent_findings(asset_id, set())
     assert db.finding_counts()["open"] == 0
     assert db.finding_counts()["resolved"] == 1
+
+
+def test_scan_snapshot_preserves_each_runs_exact_probe_and_findings(tmp_path: Path):
+    db = Database(tmp_path / "test.sqlite3")
+    library_id = db.add_library("Movies", str(tmp_path), "movie")
+    asset = MediaAsset(str(tmp_path / "Movie.mkv"), "Movie.mkv", LibraryType.MOVIE, 1, 1, "movie", "Movie")
+    first_probe = ProbeSnapshot(asset.path, "2026-01-01T00:00:00Z", {}, [])
+    finding = CompatibilityFinding("audio.missing", "audio", "warning", "No audio", "Missing")
+    first = db.create_scan(ScanRun(None, library_id, str(tmp_path), LibraryType.MOVIE, False))
+    db.save_asset(library_id, asset, first_probe, [finding], first)
+
+    second_probe = ProbeSnapshot(asset.path, "2026-01-02T00:00:00Z", {}, [])
+    second = db.create_scan(ScanRun(None, library_id, str(tmp_path), LibraryType.MOVIE, False))
+    db.save_asset(library_id, asset, second_probe, [], second)
+
+    first_snapshot = db.scan_snapshot(first)
+    second_snapshot = db.scan_snapshot(second)
+    assert first_snapshot[0]["probe"]["captured_at"] == "2026-01-01T00:00:00Z"
+    assert [item["rule_id"] for item in first_snapshot[0]["findings"]] == ["audio.missing"]
+    assert second_snapshot[0]["probe"]["captured_at"] == "2026-01-02T00:00:00Z"
+    assert second_snapshot[0]["findings"] == []
+
+
+def test_scan_snapshot_reconstructs_only_the_latest_pre_migration_scan(tmp_path: Path):
+    db = Database(tmp_path / "test.sqlite3")
+    library_id = db.add_library("Movies", str(tmp_path), "movie")
+    asset = MediaAsset(str(tmp_path / "Movie.mkv"), "Movie.mkv", LibraryType.MOVIE, 1, 1, "movie", "Movie")
+    first = db.create_scan(
+        ScanRun(None, library_id, str(tmp_path), LibraryType.MOVIE, False, total_files=1)
+    )
+    db.save_asset(library_id, asset, ProbeSnapshot(asset.path, "2026-01-01T00:00:00Z", {}, []), [], first)
+    second = db.create_scan(
+        ScanRun(None, library_id, str(tmp_path), LibraryType.MOVIE, False, total_files=1)
+    )
+    db.save_asset(library_id, asset, ProbeSnapshot(asset.path, "2026-01-02T00:00:00Z", {}, []), [], second)
+    with db.connect() as connection:
+        connection.execute("DELETE FROM scan_assets")
+
+    assert db.scan_snapshot(second)[0]["probe"]["captured_at"] == "2026-01-02T00:00:00Z"
+    with pytest.raises(ValueError, match="predates snapshot exports"):
+        db.scan_snapshot(first)
 
 
 def test_ignored_finding_stays_ignored_while_present_then_resolves_and_reopens(tmp_path: Path):

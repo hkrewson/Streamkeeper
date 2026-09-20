@@ -60,6 +60,12 @@ of the conversion parity gate.
 
 ## 5. Conversion parity gates
 
+Status: controlled synthetic conversion coverage and a normalized comparison
+tool are in place. Completed web scans now preserve and export immutable,
+CLI-compatible snapshots, removing direct database access from the pending
+full-library shadow review. Authorized Dolby Vision, HDR10+, and bitmap
+subtitle samples plus off-library playback approval remain required.
+
 - Complete differential dry-run comparison against the frozen shell reference.
 - Extend controlled output coverage for Dolby Vision, HDR10+, and bitmap
   subtitles.

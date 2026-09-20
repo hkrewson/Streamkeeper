@@ -133,11 +133,20 @@ class Database:
                     reason TEXT NOT NULL,
                     pattern TEXT
                 );
+                CREATE TABLE IF NOT EXISTS scan_assets (
+                    scan_id INTEGER NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
+                    asset_id INTEGER NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+                    probe_id INTEGER NOT NULL REFERENCES probes(id),
+                    asset_json TEXT NOT NULL,
+                    findings_json TEXT NOT NULL,
+                    PRIMARY KEY(scan_id, asset_id)
+                );
                 CREATE INDEX IF NOT EXISTS idx_assets_library ON assets(library_id, relative_path);
                 CREATE INDEX IF NOT EXISTS idx_findings_status ON findings(status, last_seen_at);
                 CREATE INDEX IF NOT EXISTS idx_scans_created ON scans(created_at DESC);
                 CREATE INDEX IF NOT EXISTS idx_scan_events_scan ON scan_events(scan_id,id);
                 CREATE INDEX IF NOT EXISTS idx_scan_exclusions_scan ON scan_exclusions(scan_id,id);
+                CREATE INDEX IF NOT EXISTS idx_scan_assets_scan ON scan_assets(scan_id,asset_id);
                 """
             )
             asset_columns = {row[1] for row in db.execute("PRAGMA table_info(assets)")}
@@ -431,10 +440,19 @@ class Database:
             assert row
             asset_id = int(row[0])
             if record_probe:
-                db.execute(
+                probe_cursor = db.execute(
                     "INSERT INTO probes(asset_id,scan_id,captured_at,snapshot_json) VALUES(?,?,?,?)",
                     (asset_id, scan_id, snapshot.captured_at, json.dumps(snapshot.to_dict(), separators=(",", ":"))),
                 )
+                probe_id = int(probe_cursor.lastrowid)
+            else:
+                probe_row = db.execute(
+                    "SELECT id FROM probes WHERE asset_id=? ORDER BY id DESC LIMIT 1",
+                    (asset_id,),
+                ).fetchone()
+                if not probe_row:
+                    raise ValueError("Cannot reuse a probe that has not been stored")
+                probe_id = int(probe_row["id"])
             seen_rules: set[str] = set()
             for finding in findings:
                 seen_rules.add(finding.rule_id)
@@ -449,7 +467,93 @@ class Database:
                     (library_id, asset_id, finding.rule_id, finding.category, finding.severity, finding.title,
                      finding.detail, finding.recommended_action, finding.status.value, now, now, scan_id, scan_id),
                 )
+            db.execute(
+                """INSERT INTO scan_assets(scan_id,asset_id,probe_id,asset_json,findings_json)
+                   VALUES(?,?,?,?,?)
+                   ON CONFLICT(scan_id,asset_id) DO UPDATE SET
+                   probe_id=excluded.probe_id,asset_json=excluded.asset_json,
+                   findings_json=excluded.findings_json""",
+                (
+                    scan_id,
+                    asset_id,
+                    probe_id,
+                    json.dumps(asset.to_dict(), separators=(",", ":")),
+                    json.dumps([item.to_dict() for item in findings], separators=(",", ":")),
+                ),
+            )
             return asset_id
+
+    def scan_snapshot(self, scan_id: int) -> list[dict[str, Any]]:
+        """Return the stable CLI-compatible rows captured by one scan.
+
+        New scans preserve their exact asset, probe, and finding payloads. The
+        fallback reconstructs the most recent pre-migration scan so an existing
+        deployment can export evidence immediately after upgrading.
+        """
+        scan = self.scan(scan_id)
+        if not scan:
+            raise ValueError("Scan not found")
+        with self.connect() as db:
+            rows = list(
+                db.execute(
+                    """SELECT sa.asset_json,p.snapshot_json,sa.findings_json
+                       FROM scan_assets sa JOIN probes p ON p.id=sa.probe_id
+                       WHERE sa.scan_id=?
+                       ORDER BY json_extract(sa.asset_json,'$.relative_path') COLLATE NOCASE""",
+                    (scan_id,),
+                )
+            )
+            if rows:
+                return [
+                    {
+                        "asset": json.loads(row["asset_json"]),
+                        "probe": json.loads(row["snapshot_json"]),
+                        "findings": json.loads(row["findings_json"]),
+                    }
+                    for row in rows
+                ]
+
+            legacy = list(
+                db.execute(
+                    """SELECT a.*,p.snapshot_json FROM assets a
+                       LEFT JOIN probes p ON p.id=(
+                           SELECT id FROM probes WHERE asset_id=a.id ORDER BY id DESC LIMIT 1
+                       )
+                       WHERE a.last_scan_id=? ORDER BY a.relative_path COLLATE NOCASE""",
+                    (scan_id,),
+                )
+            )
+            if not legacy and int(scan.get("total_files") or 0):
+                raise ValueError(
+                    "This scan predates snapshot exports and is no longer the library's latest scan"
+                )
+            result: list[dict[str, Any]] = []
+            for row in legacy:
+                finding_rows = db.execute(
+                    """SELECT rule_id,category,severity,title,detail,recommended_action,status
+                       FROM findings WHERE asset_id=? AND last_scan_id=? ORDER BY rule_id""",
+                    (row["id"], scan_id),
+                )
+                asset = {
+                    "path": row["path"],
+                    "relative_path": row["relative_path"],
+                    "library_type": row["library_type"],
+                    "size_bytes": row["size_bytes"],
+                    "modified_ns": row["modified_ns"],
+                    "media_kind": row["media_kind"],
+                    "title": row["title"],
+                    "extra_type": row["extra_type"],
+                }
+                snapshot = json.loads(row["snapshot_json"]) if row["snapshot_json"] else {
+                    "path": row["path"], "captured_at": scan.get("finished_at") or scan["created_at"],
+                    "format": {}, "streams": [], "error": "Probe snapshot unavailable",
+                }
+                result.append({
+                    "asset": asset,
+                    "probe": snapshot,
+                    "findings": [dict(item) for item in finding_rows],
+                })
+            return result
 
     def resolve_absent_findings(self, asset_id: int, seen_rules: set[str]) -> None:
         """Resolve only after the caller has completed a successful scan pass."""
@@ -670,7 +774,8 @@ class Database:
             )
             probe_cursor = db.execute(
                 """DELETE FROM probes WHERE captured_at<? AND id NOT IN
-                   (SELECT MAX(id) FROM probes GROUP BY asset_id)""",
+                   (SELECT MAX(id) FROM probes GROUP BY asset_id)
+                   AND id NOT IN (SELECT probe_id FROM scan_assets)""",
                 (cutoff,),
             )
             return {

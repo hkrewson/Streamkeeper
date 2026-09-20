@@ -167,6 +167,27 @@ def test_scan_detail_exposes_file_failures(tmp_path: Path):
         assert " UTC</time>" in page.text
 
 
+def test_completed_scan_snapshot_is_downloadable_in_cli_comparison_format(tmp_path: Path):
+    app = create_app(tmp_path / "web.sqlite3", start_worker=False)
+    db = app.state.database
+    library_id = db.add_library("Movies", str(tmp_path), "movie")
+    scan_id = db.create_scan(
+        ScanRun(None, library_id, str(tmp_path), LibraryType.MOVIE, False, status="completed", total_files=1)
+    )
+    asset = MediaAsset(str(tmp_path / "Film.mkv"), "Film.mkv", LibraryType.MOVIE, 1, 1, "movie", "Film")
+    probe = ProbeSnapshot(asset.path, "2026-09-19T12:00:00+00:00", {}, [])
+    db.save_asset(library_id, asset, probe, [], scan_id)
+
+    with TestClient(app) as client:
+        response = client.get(f"/api/scans/{scan_id}/snapshot.json")
+        assert response.status_code == 200
+        assert response.headers["content-disposition"] == f'attachment; filename="streamkeeper-scan-{scan_id}.json"'
+        assert response.json()[0]["asset"]["relative_path"] == "Film.mkv"
+        assert response.json()[0]["probe"]["captured_at"] == "2026-09-19T12:00:00+00:00"
+        page = client.get(f"/scans?selected={scan_id}")
+        assert "Export scan snapshot" in page.text
+
+
 def test_library_scope_and_assessment_counts(tmp_path: Path):
     app = create_app(tmp_path / "web.sqlite3", start_worker=False)
     db = app.state.database

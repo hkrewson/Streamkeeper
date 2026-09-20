@@ -106,6 +106,10 @@ unexplained porting difference.
   file metadata, capture times, and raw bitrate measurements, then reports
   missing, added, or classification-changed assets in text or JSON. This makes
   the pending full-library review reproducible without modifying media.
+- Every new web scan preserves an immutable CLI-compatible snapshot of the
+  asset, probe, and finding decisions used in that run. Completed scans can be
+  exported from the Scans inspector for offline shadow comparison; the latest
+  pre-migration scan can also be reconstructed after an upgrade.
 - Normalized command planning covers data-stream omission, MOV_TEXT conversion,
   ASS/SSA fallback generation, source dispositions, and cover extraction and
   re-attachment. Each branch now has controlled command execution and semantic

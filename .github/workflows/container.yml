@@ -106,7 +106,7 @@ jobs:
             "import json,urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8080/api/tools')); assert data['dolby_vision_ready'] is True; assert data['dovi_rpu_ready'] is True; assert data['tools']['dovi_tool']['available'] is True"
 
       - name: Scan image for fixable critical vulnerabilities
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: streamkeeper:ci
           format: table

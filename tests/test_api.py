@@ -63,6 +63,7 @@ def test_tool_health_api_reports_base_and_conditional_readiness(tmp_path: Path, 
         "dovi_tool": {"name": "dovi_tool", "available": False, "path": None, "version": None, "error": "not found"},
     }
     monkeypatch.setattr("streamkeeper.web.tool_status", lambda name: dict(statuses[name]))
+    monkeypatch.setattr("streamkeeper.web.ffmpeg_has_bitstream_filter", lambda _name: True)
     app = create_app(tmp_path / "web.sqlite3", start_worker=False)
 
     with TestClient(app) as client:
@@ -72,10 +73,31 @@ def test_tool_health_api_reports_base_and_conditional_readiness(tmp_path: Path, 
         assert health["scan_ready"] is True
         assert health["conversion_ready"] is True
         assert health["dolby_vision_ready"] is False
+        assert health["dovi_rpu_ready"] is True
         assert health["tools"]["dovi_tool"]["role"] == "Dolby Vision normalization when required"
         settings = client.get("/settings")
         assert "8.0" in settings.text
         assert "Missing" in settings.text
+
+
+def test_dolby_vision_readiness_requires_ffmpeg_signaling_support(tmp_path: Path, monkeypatch):
+    statuses = {
+        name: {"name": name, "available": True, "path": f"/tools/{name}", "version": "ready", "error": None}
+        for name in ("ffmpeg", "ffprobe", "dovi_tool")
+    }
+    monkeypatch.setattr("streamkeeper.web.tool_status", lambda name: dict(statuses[name]))
+    monkeypatch.setattr("streamkeeper.web.ffmpeg_has_bitstream_filter", lambda _name: False)
+    app = create_app(tmp_path / "web.sqlite3", start_worker=False)
+
+    with TestClient(app) as client:
+        health = client.get("/api/tools").json()
+        assert health["conversion_ready"] is True
+        assert health["dolby_vision_ready"] is False
+        assert health["dovi_rpu_ready"] is False
+        assert "does not provide" in health["dovi_rpu_error"]
+        settings = client.get("/settings").text
+        assert "Dolby Vision signaling" in settings
+        assert "Missing" in settings
 
 
 def test_http_basic_authentication_and_public_health(tmp_path: Path, monkeypatch):

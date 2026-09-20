@@ -114,6 +114,28 @@ def test_controlled_executor_refuses_an_unsafe_plan_before_touching_source(tmp_p
     assert not Path(plan.backup_path).exists()
 
 
+def test_controlled_executor_refuses_dolby_vision_without_signaling_filter(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    source, _nfo, plan = fixture_plan(tmp_path)
+    original_hash = file_sha256(source)
+    dolby_vision = replace(
+        plan,
+        video_action="dovi_convert",
+        required_tools=["ffmpeg", "ffprobe", "dovi_tool"],
+    )
+    monkeypatch.setattr(executor_module, "require_tool", lambda name: f"/tools/{name}")
+    monkeypatch.setattr(executor_module, "ffmpeg_has_bitstream_filter", lambda name: False)
+
+    with pytest.raises(ConversionExecutionError, match="lacks the dovi_rpu filter"):
+        execute_controlled(dolby_vision, minimum_free_bytes=0)
+
+    assert file_sha256(source) == original_hash
+    assert not source.with_name(f".{source.name}.streamkeeper.lock").exists()
+    assert not Path(plan.backup_path).exists()
+
+
 def test_controlled_executor_reports_an_empty_command_plan_cleanly(tmp_path: Path):
     source, _nfo, plan = fixture_plan(tmp_path)
     empty = replace(plan, normalized_commands=[])

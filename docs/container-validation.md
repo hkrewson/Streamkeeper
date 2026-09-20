@@ -1,6 +1,6 @@
 # Container validation
 
-The scan-only image was rebuilt and exercised on 2026-09-18 using Docker's
+The scan-only image was rebuilt and exercised on 2026-09-19 using Docker's
 Linux ARM64 runtime. The same Dockerfile uses multi-architecture Debian and
 Python base packages for x86-64 Synology models.
 
@@ -13,6 +13,8 @@ Python base packages for x86-64 Synology models.
 - SQLite can create and migrate its database in `/data`.
 - A write attempt through the `/media` mount is rejected.
 - FFprobe is installed in the runtime image.
+- FFmpeg exposes the `dovi_rpu` bitstream filter, and `/api/tools` reports the
+  combined Dolby Vision capability as ready.
 - `/health` responds successfully and Docker reports the container as healthy.
 - The image-only Synology Compose file expands without a local build context.
 - Replacing the container while reusing its named data volume preserves the
@@ -31,9 +33,13 @@ The image bundles `dovi_tool` 2.3.4 from the project's official static Linux
 releases. AMD64 and ARM64 archives are selected by the container target
 architecture and verified against pinned SHA-256 digests before installation.
 Both binaries have been executed on their target architecture, and the ARM64
-image has passed the application health and `/api/tools` readiness checks.
+image has passed the application health and `/api/tools` readiness checks. The
+container workflow also requires the bundled FFmpeg to expose the `dovi_rpu`
+bitstream filter. Settings reports Dolby Vision ready only when both components
+are available.
 
-`dovi_tool` remains a conditional conversion dependency rather than an
-application startup dependency. Its absence from a non-container installation
-is reported on the Settings page without disabling inventory, FFprobe analysis,
-findings, or ordinary dry-run planning.
+Dolby Vision support remains a conditional conversion dependency rather than an
+application startup dependency. A missing `dovi_tool` or `dovi_rpu` filter is
+reported on the Settings page without disabling inventory, FFprobe analysis,
+findings, or ordinary dry-run planning. The executor refuses a Dolby Vision
+conversion before it creates a lock or changes the source when either is absent.

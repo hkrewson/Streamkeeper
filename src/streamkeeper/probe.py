@@ -109,6 +109,27 @@ def tool_status(name: str) -> dict[str, str | bool | None]:
     }
 
 
+def ffmpeg_has_bitstream_filter(name: str, *, timeout: int = 10) -> bool:
+    """Return whether the installed FFmpeg exposes one required bitstream filter."""
+    executable = require_tool("ffmpeg")
+    try:
+        result = subprocess.run(
+            [executable, "-hide_banner", "-bsfs"],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise ProbeError("FFmpeg capability check timed out") from exc
+    except OSError as exc:
+        raise ProbeError(f"Unable to inspect FFmpeg capabilities: {exc}") from exc
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "capability check failed").strip()
+        raise ProbeError(f"Unable to inspect FFmpeg capabilities: {detail[-1000:]}")
+    return name in {line.strip() for line in result.stdout.splitlines()}
+
+
 def probe_file(
     path: str | Path, *, deep: bool = False, timeout: int = 300,
     cancel_event: threading.Event | None = None,

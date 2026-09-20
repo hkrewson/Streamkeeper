@@ -100,8 +100,10 @@ check reports the container as unhealthy until the pair is corrected.
 Dolby Vision processing are ready, with each executable path, version, and
 diagnostic error. Tool checks time out rather than holding the Settings page.
 The published image includes checksum-verified `dovi_tool` 2.3.4 binaries for
-AMD64 and ARM64. The application still starts and ordinary scans remain usable
-when that optional executable is absent from a non-container installation.
+AMD64 and ARM64. Dolby Vision readiness also verifies that FFmpeg exposes its
+`dovi_rpu` bitstream filter, which is needed to write recognizable profile 8
+signaling into the output MKV. The application still starts and ordinary scans
+remain usable when either conditional capability is absent.
 
 ## Migration safety
 

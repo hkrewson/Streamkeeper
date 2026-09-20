@@ -11,7 +11,7 @@ from typing import Callable
 from .evidence import render_evidence
 from .models import ConversionPlan, ConversionReceipt
 from .nfo import update_nfo, validate_nfo
-from .probe import probe_file, require_tool, tool_version
+from .probe import ffmpeg_has_bitstream_filter, probe_file, require_tool, tool_version
 from .transaction import InstallArtifacts, install_artifacts
 from .validation import validate_copied_stream_hashes, validate_output
 
@@ -68,9 +68,13 @@ def execute_controlled(
             nfo,
             temporary_paths,
         )
-        lock_fd = _create_lock(lock)
         for tool in plan.required_tools:
             require_tool(tool)
+        if plan.video_action.startswith("dovi_convert") and not ffmpeg_has_bitstream_filter("dovi_rpu"):
+            raise ConversionExecutionError(
+                "installed FFmpeg lacks the dovi_rpu filter required for Dolby Vision signaling"
+            )
+        lock_fd = _create_lock(lock)
         source_hash_before = file_sha256(source)
         source_probe = probe_file(source)
         checkpoint("probed")

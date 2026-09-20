@@ -101,8 +101,9 @@ jobs:
           test "$(docker inspect --format '{{.Config.User}}' streamkeeper-ci)" = "streamkeeper"
           docker exec streamkeeper-ci test -s /data/streamkeeper.sqlite3
           docker exec streamkeeper-ci dovi_tool --version | grep --fixed-strings "2.3.4"
+          docker exec streamkeeper-ci sh -c 'ffmpeg -hide_banner -bsfs | grep --fixed-strings --line-regexp dovi_rpu'
           docker exec streamkeeper-ci python -c \
-            "import json,urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8080/api/tools')); assert data['dolby_vision_ready'] is True; assert data['tools']['dovi_tool']['available'] is True"
+            "import json,urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8080/api/tools')); assert data['dolby_vision_ready'] is True; assert data['dovi_rpu_ready'] is True; assert data['tools']['dovi_tool']['available'] is True"
 
       - name: Scan image for fixable critical vulnerabilities
         uses: aquasecurity/trivy-action@0.36.0

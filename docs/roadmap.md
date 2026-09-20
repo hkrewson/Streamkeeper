@@ -50,14 +50,16 @@ the excluded path, reason, and matching pattern for review in the scan detail.
 
 Status: checksum-pinned `dovi_tool` 2.3.4 binaries are packaged for AMD64 and
 ARM64. Both architecture-specific releases execute successfully, and the ARM64
-container reports Dolby Vision readiness through the application API. A
-read-only authorized Dolby Vision 7 sample now has exact shell/Python planning
-parity for profile and compatibility ID. A short authorized excerpt also
-verifies the profile 7 MEL to recognized profile 8 Matroska signaling, frame
-preservation, static HDR metadata, full remux path, real PGS payload
-preservation, and generated E-AC3 fallback without touching the library source.
+container reports Dolby Vision readiness through the application API only when
+FFmpeg's `dovi_rpu` bitstream filter is also present. A read-only authorized
+Dolby Vision 7 sample now has exact shell/Python planning parity for profile and
+compatibility ID. A short authorized excerpt also verifies the profile 7 MEL to
+recognized profile 8 Matroska signaling, frame preservation, static HDR
+metadata, full remux path, real PGS payload preservation, and generated E-AC3
+fallback without touching the library source.
 
 - Package and report a verified `dovi_tool` for AMD64 and ARM64.
+- Verify and report FFmpeg `dovi_rpu` signaling support.
 - Keep ordinary scanning operational when the optional tool is unavailable.
 - Validate Dolby Vision profiles and compatibility IDs with authorized samples.
 

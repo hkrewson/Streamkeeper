@@ -21,7 +21,7 @@ from .database import Database
 from .discovery import classify
 from .models import LibraryType, ProbeSnapshot
 from .planner import build_plan
-from .probe import probe_file, tool_status
+from .probe import ProbeError, ffmpeg_has_bitstream_filter, probe_file, tool_status
 from .worker import ScanWorker
 
 PACKAGE_DIR = Path(__file__).parent
@@ -148,10 +148,21 @@ def create_app(database_path: str | Path | None = None, *, start_worker: bool = 
         tools["ffmpeg"]["role"] = "Media conversion"
         tools["ffprobe"]["role"] = "Scanning and output validation"
         tools["dovi_tool"]["role"] = "Dolby Vision normalization when required"
+        dovi_rpu_ready = False
+        dovi_rpu_error = None
+        if tools["ffmpeg"]["available"]:
+            try:
+                dovi_rpu_ready = ffmpeg_has_bitstream_filter("dovi_rpu")
+                if not dovi_rpu_ready:
+                    dovi_rpu_error = "The installed FFmpeg does not provide the dovi_rpu filter"
+            except ProbeError as exc:
+                dovi_rpu_error = str(exc)
         return {
             "scan_ready": bool(tools["ffprobe"]["available"]),
             "conversion_ready": bool(tools["ffmpeg"]["available"] and tools["ffprobe"]["available"]),
-            "dolby_vision_ready": bool(tools["dovi_tool"]["available"]),
+            "dolby_vision_ready": bool(tools["dovi_tool"]["available"] and dovi_rpu_ready),
+            "dovi_rpu_ready": dovi_rpu_ready,
+            "dovi_rpu_error": dovi_rpu_error,
             "tools": tools,
         }
 
@@ -340,6 +351,9 @@ def create_app(database_path: str | Path | None = None, *, start_worker: bool = 
             name: details["version"] if details["available"] else None
             for name, details in health["tools"].items()
         }
+        versions["Dolby Vision signaling"] = (
+            "FFmpeg dovi_rpu filter" if health["dovi_rpu_ready"] else None
+        )
         return page(
             request, "settings", settings=database.settings(), time_zones=time_zones,
             tool_versions=versions, saved=bool(saved),

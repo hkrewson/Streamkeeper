@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from streamkeeper.probe import ProbeError, tool_status, tool_version
+from streamkeeper.probe import ProbeError, ffmpeg_has_bitstream_filter, tool_status, tool_version
 
 
 def test_tool_status_reports_missing_executable(monkeypatch):
@@ -50,3 +50,27 @@ def test_tool_version_timeout_is_bounded_and_explained(monkeypatch):
     assert status["available"] is False
     assert status["path"] == "/tools/ffmpeg"
     assert "timed out" in str(status["error"])
+
+
+def test_ffmpeg_bitstream_filter_capability_is_detected(monkeypatch):
+    monkeypatch.setattr("streamkeeper.probe.shutil.which", lambda _name: "/tools/ffmpeg")
+    monkeypatch.setattr(
+        "streamkeeper.probe.subprocess.run",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            returncode=0, stdout="Bitstream filters:\nsetts\ndovi_rpu\n", stderr=""
+        ),
+    )
+
+    assert ffmpeg_has_bitstream_filter("dovi_rpu") is True
+    assert ffmpeg_has_bitstream_filter("missing_filter") is False
+
+
+def test_ffmpeg_bitstream_filter_capability_failure_is_explained(monkeypatch):
+    monkeypatch.setattr("streamkeeper.probe.shutil.which", lambda _name: "/tools/ffmpeg")
+    monkeypatch.setattr(
+        "streamkeeper.probe.subprocess.run",
+        lambda *_args, **_kwargs: SimpleNamespace(returncode=1, stdout="", stderr="broken build"),
+    )
+
+    with pytest.raises(ProbeError, match="broken build"):
+        ffmpeg_has_bitstream_filter("dovi_rpu")

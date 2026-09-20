@@ -92,6 +92,17 @@ def _remux_command(
     command += ["-map_metadata", source_input, "-map_chapters", source_input]
     command += ["-c", "copy"]
 
+    if external_video:
+        frame_rate = _source_frame_rate(snapshot)
+        rate = Fraction(frame_rate)
+        timestamp_expression = f"N*{rate.denominator}/{rate.numerator}/TB"
+        command += [
+            "-bsf:v:0",
+            f"setts=pts={timestamp_expression}:dts={timestamp_expression}:duration={rate.denominator}/{rate.numerator}/TB",
+            "-r:v:0",
+            frame_rate,
+        ]
+
     stream_ordinals: dict[str, int] = {"video": 0, "subtitle": 0, "data": 0, "attachment": 0}
     stream_specifiers = {"video": "v", "subtitle": "s", "data": "d", "attachment": "t"}
     for stream in snapshot.streams:
@@ -164,6 +175,18 @@ def _disposition(disposition: object) -> str:
         return "0"
     enabled = [str(name) for name, value in disposition.items() if int(value or 0) == 1]
     return "+".join(enabled) if enabled else "0"
+
+
+def _source_frame_rate(snapshot: ProbeSnapshot) -> str:
+    video = primary_video(snapshot) or {}
+    for key in ("avg_frame_rate", "r_frame_rate"):
+        try:
+            rate = Fraction(str(video.get(key, "")))
+        except (ValueError, ZeroDivisionError):
+            continue
+        if rate > 0:
+            return f"{rate.numerator}/{rate.denominator}"
+    raise ValueError("Dolby Vision/HDR10+ normalization requires a valid source frame rate")
 
 
 def _attached_pictures(snapshot: ProbeSnapshot, output: Path) -> list[dict[str, object]]:

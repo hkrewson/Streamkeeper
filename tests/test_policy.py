@@ -63,7 +63,7 @@ def test_dolby_vision_seven_uses_metadata_conversion():
     }])))
     assert mode == "dovi_convert"
     assert hdr_mode == "Dolby Vision profile 7 (compatibility 6)"
-    assert "dovi_tool" in tools
+    assert tools == ["dovi_tool"]
 
 
 def test_native_dolby_vision_profiles_are_copied():

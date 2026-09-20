@@ -52,8 +52,10 @@ Status: checksum-pinned `dovi_tool` 2.3.4 binaries are packaged for AMD64 and
 ARM64. Both architecture-specific releases execute successfully, and the ARM64
 container reports Dolby Vision readiness through the application API. A
 read-only authorized Dolby Vision 7 sample now has exact shell/Python planning
-parity for profile and compatibility ID; transformed-output validation remains
-part of the conversion parity gate.
+parity for profile and compatibility ID. A short authorized excerpt also
+verifies the profile 7 MEL to profile 8 transformation, frame preservation,
+static HDR metadata, full remux path, and generated E-AC3 fallback without
+touching the library source.
 
 - Package and report a verified `dovi_tool` for AMD64 and ARM64.
 - Keep ordinary scanning operational when the optional tool is unavailable.
@@ -64,9 +66,9 @@ part of the conversion parity gate.
 Status: controlled synthetic conversion coverage and a normalized comparison
 tool are in place. Completed web scans now preserve and export immutable,
 CLI-compatible snapshots, removing direct database access from the pending
-full-library shadow review. An authorized HDR10+ excerpt has confirmed removal
-of dynamic metadata with static HDR10 metadata preserved. Dolby Vision and
-bitmap-subtitle output samples plus off-library playback approval remain
+full-library shadow review. Authorized HDR10+ and Dolby Vision 7 excerpts have
+confirmed metadata normalization, frame preservation, and the full remux path.
+Bitmap-subtitle payload validation plus off-library playback approval remain
 required.
 
 - Complete differential dry-run comparison against the frozen shell reference.

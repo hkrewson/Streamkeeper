@@ -105,6 +105,13 @@ def test_sanitized_real_hdr10plus_fixture_records_approved_policy_correction(tmp
     dovi_command = next(command for command in plan.normalized_commands if command[0] == "dovi_tool")
     assert dovi_command[1:3] == ["--drop-hdr10plus", "convert"]
     assert plan.required_tools == ["ffmpeg", "ffprobe", "dovi_tool"]
+    remux = plan.normalized_commands[-1]
+    assert remux[remux.index("-r:v:0") + 1] == "24000/1001"
+    timestamps = remux[remux.index("-bsf:v:0") + 1]
+    assert timestamps == (
+        "setts=pts=N*1001/24000/TB:dts=N*1001/24000/TB:"
+        "duration=1001/24000/TB"
+    )
 
 
 def test_comparator_reports_structured_fields():

@@ -10,7 +10,7 @@ while moving behavior out of the frozen shell converter.
 | Real H.264 SDR, DTS 5.1, six SRT subtitles, embedded JPEG cover | Read-only shell dry run and sanitized ffprobe snapshot | Structured planning fields match: video action, HDR mode, selected source, E-AC3 5.1/640 target, default track, labels, subtitles, and output paths |
 | Real HEVC HDR10, AAC 7.1, two subtitles | Read-only shell and Python plans using the same container tools | Exposed the approved AAC 7.1 policy correction recorded below |
 | Real H.264 SDR, AC3 5.1, matching movie NFO | Read-only shell dry run and sanitized ffprobe snapshot | Structured planning fields match, including the existing compatible default and a sidecar filename containing a parenthesized year |
-| Real HEVC Dolby Vision 7, TrueHD Atmos 7.1, eight additional audio streams, 13 PGS subtitles | Read-only shell dry run and sanitized ffprobe snapshot | Structured planning fields match for profile/compatibility identification, metadata-only DV 8.1 conversion, best-source E-AC3 fallback, all audio labels/defaults, bitmap preservation warning, and NFO path |
+| Real HEVC Dolby Vision 7, TrueHD Atmos 7.1, eight additional audio streams, 13 PGS subtitles | Read-only shell dry run, sanitized ffprobe snapshot, and a three-second off-library bitstream/remux excerpt | Planning fields match; the real command path converts profile 7 MEL to profile 8, preserves all 73 decoded video frames and HDR Level 6 metadata, retains all original audio/subtitle tracks, and adds E-AC3 5.1 |
 | Real HEVC HDR10+, E-AC3 5.1, two SRT subtitles, four embedded JPEG covers | Read-only shell dry run, sanitized ffprobe snapshot, and a three-second off-library bitstream excerpt | Python identifies frame-level HDR10+ that the shell reports only as HDR10; `dovi_tool --drop-hdr10plus` removes dynamic metadata while preserving HDR10 mastering-display and content-light metadata |
 | Synthetic H.264 SDR, FLAC 2.0 | Frozen-shell conversion and Python planned-command execution of isolated one-second fixtures | Commands match after path normalization; both outputs validate with the original FLAC retained and a labeled/default AAC 2.0 fallback added |
 | Synthetic H.264 SDR, PCM 5.1 | Python planned-command execution | PCM remains byte-identical; E-AC3 5.1/640 is added and made default without upmixing |
@@ -125,6 +125,10 @@ HDR base.
   ASS/SSA fallback generation, source dispositions, and cover extraction and
   re-attachment. Each branch now has controlled command execution and semantic
   output validation; copied payloads are hash-checked where applicable.
+- Dolby Vision/HDR10+ remux planning reconstructs raw-HEVC packet timestamps at
+  the exact source frame rate after `dovi_tool` processing. A real 24000/1001
+  Dolby Vision excerpt completed the full remux with all decoded video frames
+  byte-identical and in the same display order.
 - Movie and episode NFO tests preserve their distinct XML roots and unrelated
   metadata, replace an existing evidence reference without duplication, and
   leave installation to the transactional boundary. NFO discovery matches the
@@ -134,8 +138,6 @@ HDR base.
 
 ## Remaining gates
 
-- Validate the planned Dolby Vision 7 transformation against an authorized
-  output copy.
 - Extend controlled output coverage to Dolby Vision, HDR10+ normalization, and
   bitmap subtitles. PGS/VobSub requires an authorized sample because FFmpeg
   cannot reliably synthesize those tracks from text.

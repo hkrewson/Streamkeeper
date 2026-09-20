@@ -1,0 +1,58 @@
+{
+  "path": "/media/Fixture (2023).mkv",
+  "captured_at": "2026-09-19T00:00:00+00:00",
+  "tool_version": "ffprobe sanitized fixture",
+  "format": {
+    "format_name": "matroska,webm",
+    "duration": "5562.592000",
+    "bit_rate": "78746671"
+  },
+  "streams": [
+    {
+      "index": 0,
+      "codec_name": "hevc",
+      "profile": "Main 10",
+      "codec_type": "video",
+      "width": 3840,
+      "height": 2160,
+      "pix_fmt": "yuv420p10le",
+      "color_space": "bt2020nc",
+      "color_transfer": "smpte2084",
+      "color_primaries": "bt2020",
+      "side_data_list": [{
+        "side_data_type": "DOVI configuration record",
+        "dv_profile": 7,
+        "dv_level": 6,
+        "rpu_present_flag": 1,
+        "el_present_flag": 1,
+        "bl_present_flag": 1,
+        "dv_bl_signal_compatibility_id": 6
+      }],
+      "disposition": {"default": 0, "attached_pic": 0},
+      "tags": {}
+    },
+    {"index": 1, "codec_name": "truehd", "profile": "Dolby TrueHD + Dolby Atmos", "codec_type": "audio", "channels": 8, "channel_layout": "7.1", "disposition": {"default": 1}, "tags": {"language": "eng", "title": "Surround 7.1"}},
+    {"index": 2, "codec_name": "ac3", "codec_type": "audio", "channels": 6, "channel_layout": "5.1(side)", "bit_rate": "640000", "disposition": {"default": 0}, "tags": {"language": "eng", "title": "Surround 5.1"}},
+    {"index": 3, "codec_name": "ac3", "codec_type": "audio", "channels": 6, "channel_layout": "5.1(side)", "bit_rate": "640000", "disposition": {"default": 0}, "tags": {"language": "eng", "title": "Surround 5.1"}},
+    {"index": 4, "codec_name": "dts", "profile": "DTS-HD MA", "codec_type": "audio", "channels": 6, "channel_layout": "5.1(side)", "disposition": {"default": 0}, "tags": {"language": "fra", "title": "Surround 5.1"}},
+    {"index": 5, "codec_name": "dts", "profile": "DTS", "codec_type": "audio", "channels": 6, "channel_layout": "5.1(side)", "bit_rate": "1536000", "disposition": {"default": 0}, "tags": {"language": "fra", "title": "Surround 5.1"}},
+    {"index": 6, "codec_name": "ac3", "codec_type": "audio", "channels": 6, "channel_layout": "5.1(side)", "bit_rate": "640000", "disposition": {"default": 0}, "tags": {"language": "por", "title": "Surround 5.1"}},
+    {"index": 7, "codec_name": "dts", "profile": "DTS-HD MA", "codec_type": "audio", "channels": 6, "channel_layout": "5.1(side)", "disposition": {"default": 0}, "tags": {"language": "spa", "title": "Surround 5.1"}},
+    {"index": 8, "codec_name": "dts", "profile": "DTS", "codec_type": "audio", "channels": 6, "channel_layout": "5.1(side)", "bit_rate": "1536000", "disposition": {"default": 0}, "tags": {"language": "spa", "title": "Surround 5.1"}},
+    {"index": 9, "codec_name": "ac3", "codec_type": "audio", "channels": 6, "channel_layout": "5.1(side)", "bit_rate": "640000", "disposition": {"default": 0}, "tags": {"language": "tha", "title": "Surround 5.1"}},
+    {"index": 10, "codec_name": "hdmv_pgs_subtitle", "codec_type": "subtitle", "disposition": {"default": 0}, "tags": {"language": "eng"}},
+    {"index": 11, "codec_name": "hdmv_pgs_subtitle", "codec_type": "subtitle", "disposition": {"default": 0}, "tags": {"language": "eng"}},
+    {"index": 12, "codec_name": "hdmv_pgs_subtitle", "codec_type": "subtitle", "disposition": {"default": 0}, "tags": {"language": "zho"}},
+    {"index": 13, "codec_name": "hdmv_pgs_subtitle", "codec_type": "subtitle", "disposition": {"default": 0}, "tags": {"language": "zho"}},
+    {"index": 14, "codec_name": "hdmv_pgs_subtitle", "codec_type": "subtitle", "disposition": {"default": 0}, "tags": {"language": "fra"}},
+    {"index": 15, "codec_name": "hdmv_pgs_subtitle", "codec_type": "subtitle", "disposition": {"default": 0}, "tags": {"language": "kor"}},
+    {"index": 16, "codec_name": "hdmv_pgs_subtitle", "codec_type": "subtitle", "disposition": {"default": 0}, "tags": {"language": "por"}},
+    {"index": 17, "codec_name": "hdmv_pgs_subtitle", "codec_type": "subtitle", "disposition": {"default": 0}, "tags": {"language": "por"}},
+    {"index": 18, "codec_name": "hdmv_pgs_subtitle", "codec_type": "subtitle", "disposition": {"default": 0}, "tags": {"language": "spa"}},
+    {"index": 19, "codec_name": "hdmv_pgs_subtitle", "codec_type": "subtitle", "disposition": {"default": 0}, "tags": {"language": "spa"}},
+    {"index": 20, "codec_name": "hdmv_pgs_subtitle", "codec_type": "subtitle", "disposition": {"default": 0}, "tags": {"language": "tha"}},
+    {"index": 21, "codec_name": "hdmv_pgs_subtitle", "codec_type": "subtitle", "disposition": {"default": 0}, "tags": {"language": "fra"}},
+    {"index": 22, "codec_name": "hdmv_pgs_subtitle", "codec_type": "subtitle", "disposition": {"default": 0}, "tags": {"language": "fra"}}
+  ],
+  "chapters": []
+}

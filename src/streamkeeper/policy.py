@@ -214,10 +214,31 @@ def video_mode(snapshot: ProbeSnapshot) -> tuple[str, str, str, list[str]]:
     side_data = video.get("side_data_list", []) or []
     dovi = next((item for item in side_data if "DOVI" in str(item.get("side_data_type", "")).upper()), None)
     hdr10plus = any(re.search(r"HDR10\+|SMPTE2094-40", str(item.get("side_data_type", "")), re.I) for item in side_data)
-    hdr_mode = "Dolby Vision" if dovi else "HDR10" if transfer == "smpte2084" else "HLG" if transfer == "arib-std-b67" else "SDR"
+    if dovi:
+        dovi_profile = int_value(dovi.get("dv_profile"))
+        compatibility_raw = dovi.get("dv_bl_signal_compatibility_id")
+        dovi_compatibility = int_value(compatibility_raw)
+        hdr_mode = f"Dolby Vision profile {dovi_profile or 'unknown'}"
+        if compatibility_raw not in {None, ""}:
+            hdr_mode += f" (compatibility {dovi_compatibility})"
+    else:
+        dovi_profile = 0
+        dovi_compatibility = 0
+        hdr_mode = "HDR10" if transfer == "smpte2084" else "HLG" if transfer == "arib-std-b67" else "SDR"
+    if hdr10plus:
+        hdr_mode += " + HDR10+"
     required: list[str] = []
+    if dovi_profile == 8 and dovi_compatibility not in {1, 4}:
+        return (
+            "error",
+            f"Dolby Vision profile 8 compatibility ID {dovi_compatibility or 'unknown'} is not safely convertible to 8.1/8.4",
+            hdr_mode,
+            required,
+        )
+    if dovi and dovi_profile not in {5, 7, 8}:
+        return "error", f"unsupported Dolby Vision profile {dovi_profile or 'unknown'}", hdr_mode, required
     if codec == "hevc":
-        if dovi and int_value(dovi.get("dv_profile")) == 7:
+        if dovi_profile == 7:
             required.append("dovi_tool")
             action = "dovi_convert_strip_hdr10plus" if hdr10plus else "dovi_convert"
             return action, "convert Dolby Vision 7 to 8.1 without re-encoding the base layer", hdr_mode, required
@@ -244,7 +265,12 @@ def findings_for(snapshot: ProbeSnapshot, network_ceiling_bps: int = 900_000_000
     findings: list[CompatibilityFinding] = []
     video_action, video_reason, _, _ = video_mode(snapshot)
     if video_action == "error":
-        findings.append(CompatibilityFinding("video.missing", "video", "error", "No primary video", video_reason))
+        missing = video_reason == "no primary video stream"
+        findings.append(CompatibilityFinding(
+            "video.missing" if missing else "video.dolby_vision",
+            "video", "error", "No primary video" if missing else "Unsupported Dolby Vision",
+            video_reason,
+        ))
     elif video_action != "copy":
         findings.append(CompatibilityFinding("video.compatibility", "video", "action", "Video compatibility conversion", video_reason, video_action))
     audio_plan = plan_audio(snapshot)

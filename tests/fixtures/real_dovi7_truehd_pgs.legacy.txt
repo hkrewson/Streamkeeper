@@ -1,0 +1,24 @@
+Analyze: /media/Fixture (2023).mkv
+  Video: hevc, yuv420p10le, Dolby Vision profile 7 (compatibility 6)
+  Video action: dovi_convert (convert Dolby Vision 7 to 8.1 without re-encoding the base layer)
+  Existing audio tracks: 9 (all retained)
+  Existing subtitle tracks: 13
+  Subtitle warning: 13 bitmap track(s) retained; automatic OCR is not reliable
+  New audio: English E-AC3 5.1 at 640 kbps, sourced from track 1
+  Default audio: English E-AC3 5.1 (new)
+  Backup name: Fixture (2023) Original.mkv
+  Output name: Fixture (2023).mkv
+  Evidence file: Fixture (2023).conversion.txt
+  NFO update: Fixture (2023).nfo (<movie> root; <fileinfo> and <user_note>)
+  Additional tool: dovi_tool is available
+  Label 1: English TrueHD Atmos 7.1
+  Label 2: English AC3 5.1
+  Label 3: English AC3 5.1
+  Label 4: French DTS-HD MA 5.1
+  Label 5: French DTS 5.1
+  Label 6: Portuguese AC3 5.1
+  Label 7: Spanish DTS-HD MA 5.1
+  Label 8: Spanish DTS 5.1
+  Label 9: Thai AC3 5.1
+  Label 10: English E-AC3 5.1
+  DRY RUN: no encode, remux, or rename performed.

@@ -19,6 +19,8 @@ def normalized_commands(
     source = snapshot.path
     output = Path(output_path)
     staged = str(output.with_name(f".{output.name}.streamkeeper.partial.mkv"))
+    if video_action == "error":
+        return []
     attachments = _attached_pictures(snapshot, output)
     attachment_commands = [
         [

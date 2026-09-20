@@ -71,6 +71,18 @@ def test_sanitized_real_ac3_fixture_with_parenthesized_nfo_matches(tmp_path: Pat
     assert compare_decisions(reference, candidate) == {}
 
 
+def test_sanitized_real_dolby_vision_truehd_bitmap_fixture_matches(tmp_path: Path):
+    snapshot = load_snapshot("real_dovi7_truehd_pgs.json")
+    source = tmp_path / "Fixture (2023).mkv"
+    snapshot.path = str(source)
+    (tmp_path / "Fixture (2023).nfo").write_text("<movie><title>Fixture</title></movie>")
+    reference = parse_legacy_dry_run(
+        (FIXTURES / "real_dovi7_truehd_pgs.legacy.txt").read_text()
+    )
+    candidate = normalize_python_plan(build_plan(snapshot))
+    assert compare_decisions(reference, candidate) == {}
+
+
 def test_comparator_reports_structured_fields():
     reference = parse_legacy_dry_run(LEGACY_DTS)
     candidate = parse_legacy_dry_run(LEGACY_DTS.replace("Video action: copy", "Video action: transcode_hevc"))

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import sys
 from copy import deepcopy
 from pathlib import Path
 
@@ -329,7 +330,13 @@ def test_planned_ts_conversion_omits_non_playback_data_stream(tmp_path: Path):
     ("encoder", "layout", "expected_source_codec"),
     [
         ("truehd", "7.1", "truehd"),
-        ("dca", "5.1", "dts"),
+        pytest.param(
+            "dca", "5.1", "dts",
+            marks=pytest.mark.skipif(
+                sys.platform == "darwin",
+                reason="The macOS FFmpeg DCA encoder intermittently exits with SIGBUS; Linux CI retains coverage",
+            ),
+        ),
     ],
 )
 def test_planned_lossless_and_dts_sources_add_eac3_without_altering_original(

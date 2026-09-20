@@ -1,4 +1,5 @@
 from streamkeeper.models import ProbeSnapshot
+from streamkeeper.planner import build_plan
 from streamkeeper.policy import findings_for, plan_audio, planned_audio_labels, video_mode
 
 
@@ -56,9 +57,37 @@ def test_audio_labels_include_format_channels_and_special_original_title():
 
 
 def test_dolby_vision_seven_uses_metadata_conversion():
-    mode, _, _, tools = video_mode(snapshot(video(side_data=[{"side_data_type": "DOVI configuration record", "dv_profile": 7}])))
+    mode, _, hdr_mode, tools = video_mode(snapshot(video(side_data=[{
+        "side_data_type": "DOVI configuration record", "dv_profile": 7,
+        "dv_bl_signal_compatibility_id": 6,
+    }])))
     assert mode == "dovi_convert"
+    assert hdr_mode == "Dolby Vision profile 7 (compatibility 6)"
     assert "dovi_tool" in tools
+
+
+def test_native_dolby_vision_profiles_are_copied():
+    for profile, compatibility in ((5, 0), (8, 1), (8, 4)):
+        mode, _, _, _ = video_mode(snapshot(video(side_data=[{
+            "side_data_type": "DOVI configuration record",
+            "dv_profile": profile,
+            "dv_bl_signal_compatibility_id": compatibility,
+        }])))
+        assert mode == "copy"
+
+
+def test_unsafe_dolby_vision_profile_is_an_error_without_commands():
+    item = snapshot(video(side_data=[{
+        "side_data_type": "DOVI configuration record",
+        "dv_profile": 8,
+        "dv_bl_signal_compatibility_id": 2,
+    }]))
+    plan = build_plan(item)
+    assert plan.video_action == "error"
+    assert plan.normalized_commands == []
+    finding = next(finding for finding in plan.findings if finding.rule_id == "video.dolby_vision")
+    assert finding.severity == "error"
+    assert "compatibility ID 2" in finding.detail
 
 
 def test_peak_bitrate_and_bitmap_subtitles_create_findings():

@@ -44,7 +44,15 @@ def normalized_commands(
             *attachment_commands,
             ["ffmpeg", "-hide_banner", "-nostdin", "-y", "-i", source, "-map", "0:v:0", "-c:v", "copy", "-bsf:v", "hevc_mp4toannexb", "-an", "-sn", "-dn", "-f", "hevc", base],
             dovi,
-            _remux_command(snapshot, normalized, staged, audio, attachments, external_video=True),
+            _remux_command(
+                snapshot,
+                normalized,
+                staged,
+                audio,
+                attachments,
+                video_action=video_action,
+                external_video=True,
+            ),
         ]
     return [
         *attachment_commands,
@@ -96,9 +104,15 @@ def _remux_command(
         frame_rate = _source_frame_rate(snapshot)
         rate = Fraction(frame_rate)
         timestamp_expression = f"N*{rate.denominator}/{rate.numerator}/TB"
+        bitstream_filters = (
+            f"setts=pts={timestamp_expression}:dts={timestamp_expression}:"
+            f"duration={rate.denominator}/{rate.numerator}/TB"
+        )
+        if video_action.startswith("dovi_convert"):
+            bitstream_filters += ",dovi_rpu"
         command += [
             "-bsf:v:0",
-            f"setts=pts={timestamp_expression}:dts={timestamp_expression}:duration={rate.denominator}/{rate.numerator}/TB",
+            bitstream_filters,
             "-r:v:0",
             frame_rate,
         ]

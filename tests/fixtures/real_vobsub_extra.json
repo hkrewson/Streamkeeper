@@ -1,0 +1,46 @@
+{
+  "path": "/media/Movie (1990)/Featurettes/Original Trailer.mkv",
+  "captured_at": "2026-09-19T00:00:00+00:00",
+  "format": {
+    "format_name": "matroska,webm",
+    "duration": "181.714000",
+    "size": "28282006",
+    "bit_rate": "1245111"
+  },
+  "streams": [
+    {
+      "index": 0,
+      "codec_type": "video",
+      "codec_name": "hevc",
+      "profile": "Main 10",
+      "width": 704,
+      "height": 472,
+      "pix_fmt": "yuv420p10le",
+      "r_frame_rate": "30000/1001",
+      "avg_frame_rate": "30000/1001",
+      "color_transfer": "bt709",
+      "disposition": {"default": 1, "attached_pic": 0},
+      "tags": {}
+    },
+    {
+      "index": 1,
+      "codec_type": "audio",
+      "codec_name": "ac3",
+      "channels": 2,
+      "channel_layout": "stereo",
+      "bit_rate": "448000",
+      "disposition": {"default": 0},
+      "tags": {"language": "jpn", "title": "Stereo"}
+    },
+    {
+      "index": 2,
+      "codec_type": "subtitle",
+      "codec_name": "dvd_subtitle",
+      "width": 720,
+      "height": 480,
+      "disposition": {"default": 0},
+      "tags": {"language": "eng"}
+    }
+  ],
+  "peak_bitrate_bps": null
+}

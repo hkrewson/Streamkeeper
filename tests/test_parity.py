@@ -81,6 +81,8 @@ def test_sanitized_real_dolby_vision_truehd_bitmap_fixture_matches(tmp_path: Pat
     )
     candidate = normalize_python_plan(build_plan(snapshot))
     assert compare_decisions(reference, candidate) == {}
+    remux = build_plan(snapshot).normalized_commands[-1]
+    assert remux[remux.index("-bsf:v:0") + 1].endswith(",dovi_rpu")
 
 
 def test_sanitized_real_hdr10plus_fixture_records_approved_policy_correction(tmp_path: Path):

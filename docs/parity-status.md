@@ -10,8 +10,9 @@ while moving behavior out of the frozen shell converter.
 | Real H.264 SDR, DTS 5.1, six SRT subtitles, embedded JPEG cover | Read-only shell dry run and sanitized ffprobe snapshot | Structured planning fields match: video action, HDR mode, selected source, E-AC3 5.1/640 target, default track, labels, subtitles, and output paths |
 | Real HEVC HDR10, AAC 7.1, two subtitles | Read-only shell and Python plans using the same container tools | Exposed the approved AAC 7.1 policy correction recorded below |
 | Real H.264 SDR, AC3 5.1, matching movie NFO | Read-only shell dry run and sanitized ffprobe snapshot | Structured planning fields match, including the existing compatible default and a sidecar filename containing a parenthesized year |
-| Real HEVC Dolby Vision 7, TrueHD Atmos 7.1, eight additional audio streams, 13 PGS subtitles | Read-only shell dry run, sanitized ffprobe snapshot, and a three-second off-library bitstream/remux excerpt | Planning fields match; the real command path converts profile 7 MEL to profile 8, preserves all 73 decoded video frames and HDR Level 6 metadata, retains all original audio/subtitle tracks, and adds E-AC3 5.1 |
+| Real HEVC Dolby Vision 7, TrueHD Atmos 7.1, eight additional audio streams, 13 PGS subtitles | Read-only shell dry run, sanitized ffprobe snapshot, a three-second video excerpt, and a 20-second subtitle-bearing remux excerpt | Planning fields match; the real command path emits recognized profile 8 signaling, preserves decoded frames and HDR Level 6 metadata, retains all original audio/subtitle tracks byte-identically, preserves a real PGS payload hash, and adds E-AC3 5.1 |
 | Real HEVC HDR10+, E-AC3 5.1, two SRT subtitles, four embedded JPEG covers | Read-only shell dry run, sanitized ffprobe snapshot, and a three-second off-library bitstream excerpt | Python identifies frame-level HDR10+ that the shell reports only as HDR10; `dovi_tool --drop-hdr10plus` removes dynamic metadata while preserving HDR10 mastering-display and content-light metadata |
+| Real HEVC SDR Plex featurette, AC3 2.0, VobSub | Sanitized ffprobe snapshot and an isolated full-duration copy | Video, audio, and all 34 VobSub packets survive byte-identically; duration and stream counts match, and the output receives the Plex `-featurette` suffix |
 | Synthetic H.264 SDR, FLAC 2.0 | Frozen-shell conversion and Python planned-command execution of isolated one-second fixtures | Commands match after path normalization; both outputs validate with the original FLAC retained and a labeled/default AAC 2.0 fallback added |
 | Synthetic H.264 SDR, PCM 5.1 | Python planned-command execution | PCM remains byte-identical; E-AC3 5.1/640 is added and made default without upmixing |
 | Synthetic ASS subtitle and embedded JPEG cover | Python planned-command execution | ASS remains byte-identical, an SRT fallback is added, and the cover survives extraction and re-attachment |
@@ -129,6 +130,10 @@ HDR base.
   the exact source frame rate after `dovi_tool` processing. A real 24000/1001
   Dolby Vision excerpt completed the full remux with all decoded video frames
   byte-identical and in the same display order.
+- The FFmpeg `dovi_rpu` bitstream filter restores the Matroska Dolby Vision
+  configuration record after `dovi_tool` normalization. Without that step the
+  RPU remained in the elementary stream but clients and validation could not
+  identify the output as profile 8.
 - Movie and episode NFO tests preserve their distinct XML roots and unrelated
   metadata, replace an existing evidence reference without duplication, and
   leave installation to the transactional boundary. NFO discovery matches the
@@ -138,9 +143,6 @@ HDR base.
 
 ## Remaining gates
 
-- Extend controlled output coverage to Dolby Vision, HDR10+ normalization, and
-  bitmap subtitles. PGS/VobSub requires an authorized sample because FFmpeg
-  cannot reliably synthesize those tracks from text.
 - Run the Python scanner and planner in read-only shadow mode across the full
   library and review unexplained classification differences.
 - Complete selected playback checks outside Plex before unlocking standalone

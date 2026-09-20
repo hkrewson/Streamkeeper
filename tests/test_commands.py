@@ -1,5 +1,11 @@
+import json
+from pathlib import Path
+
 from streamkeeper.models import ProbeSnapshot
 from streamkeeper.planner import build_plan
+
+
+FIXTURES = Path(__file__).parent / "fixtures"
 
 
 def test_normalized_command_is_noninteractive_and_preserves_streams():
@@ -45,3 +51,16 @@ def test_normalized_commands_preserve_cover_and_subtitle_contract():
     assert "mimetype=image/jpeg" in remux
     assert any("original" in argument for argument in remux)
     assert remux[-3:] == ["-f", "matroska", "/media/.Fixture.mkv.streamkeeper.partial.mkv"]
+
+
+def test_real_vobsub_extra_plan_preserves_bitmap_track_and_plex_naming():
+    snapshot = ProbeSnapshot(**json.loads((FIXTURES / "real_vobsub_extra.json").read_text()))
+    plan = build_plan(snapshot, media_kind="extra", extra_type="featurette")
+
+    assert plan.output_path.endswith("Original Trailer-featurette.mkv")
+    assert plan.video_action == "copy"
+    assert plan.audio.action == "none"
+    assert plan.audio.default_ordinal == 0
+    assert plan.subtitles.retained == 1
+    assert plan.subtitles.bitmap_warnings == 1
+    assert plan.normalized_commands[-1][:4] == ["ffmpeg", "-hide_banner", "-nostdin", "-y"]

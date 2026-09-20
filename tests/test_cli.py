@@ -48,6 +48,20 @@ def test_scan_json_records_per_file_operating_system_failure(tmp_path, monkeypat
     assert payload[0]["error"] == "share disconnected"
 
 
+def test_interrupted_scan_exits_cleanly_without_a_traceback(tmp_path, monkeypatch, capsys):
+    media = tmp_path / "Movie.mkv"
+    media.write_bytes(b"media")
+    monkeypatch.setattr(
+        "streamkeeper.cli.probe_file",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(KeyboardInterrupt()),
+    )
+
+    assert main(["scan", "--path", str(media), "--deep"]) == 130
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == "streamkeeper: operation cancelled\n"
+
+
 def test_empty_scan_returns_nonzero_and_valid_json(tmp_path, capsys):
     assert main(["scan", "--path", str(tmp_path), "--format", "json"]) == 1
     captured = capsys.readouterr()

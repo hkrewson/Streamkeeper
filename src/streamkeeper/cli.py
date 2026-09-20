@@ -114,6 +114,9 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, ProbeError, ParityGateError, ValueError) as exc:
         print(f"streamkeeper: {exc}", file=sys.stderr)
         return 2
+    except KeyboardInterrupt:
+        print("streamkeeper: operation cancelled", file=sys.stderr)
+        return 130
 
 
 if __name__ == "__main__":

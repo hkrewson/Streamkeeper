@@ -1,15 +1,43 @@
 from __future__ import annotations
 
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from .commands import normalized_commands
+from .discovery import SUPPORTED_EXTENSIONS
 from .models import ConversionPlan, ProbeSnapshot
 from .policy import findings_for, plan_audio, plan_subtitles, planned_audio_labels, video_mode
 
 
-def matching_nfo(path: Path) -> Path | None:
-    candidates = [path.with_suffix(".nfo"), path.parent / "movie.nfo", path.parent / "tvshow.nfo"]
-    return next((candidate for candidate in candidates if candidate.is_file()), None)
+def _nfo_root(path: Path) -> str | None:
+    try:
+        return ET.parse(path).getroot().tag.lower()
+    except (ET.ParseError, OSError):
+        return None
+
+
+def matching_nfo(path: Path, output_stem: str | None = None) -> Path | None:
+    """Select only an unambiguous movie or episode NFO sidecar."""
+    direct = [path.with_suffix(".nfo")]
+    if output_stem and output_stem != path.stem:
+        direct.append(path.with_name(f"{output_stem}.nfo"))
+    for candidate in direct:
+        if candidate.is_file() and _nfo_root(candidate) in {"movie", "episodedetails"}:
+            return candidate
+
+    if not path.parent.is_dir():
+        return None
+    media_files = [
+        candidate for candidate in path.parent.iterdir()
+        if candidate.is_file()
+        and candidate.suffix.lower() in SUPPORTED_EXTENSIONS
+        and not candidate.name.startswith("._")
+        and " original." not in candidate.name.lower()
+    ]
+    movie_nfo = path.parent / "movie.nfo"
+    if len(media_files) == 1 and movie_nfo.is_file() and _nfo_root(movie_nfo) == "movie":
+        return movie_nfo
+    return None
 
 
 def desired_stem(path: Path, media_kind: str = "movie", extra_type: str | None = None) -> str:
@@ -31,7 +59,7 @@ def build_plan(
     output = source.with_name(f"{stem}.mkv")
     backup = source.with_name(f"{stem} Original{source.suffix}")
     evidence = source.with_name(f"{stem}.conversion.txt")
-    nfo = matching_nfo(source)
+    nfo = matching_nfo(source, stem)
     video_action, video_reason, hdr_mode, extra_tools = video_mode(snapshot)
     subtitles = plan_subtitles(snapshot)
     warnings: list[str] = []

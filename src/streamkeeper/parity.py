@@ -60,8 +60,12 @@ def parse_legacy_dry_run(output: str) -> PlanningDecision:
             decision.new_audio_source_track = int(audio.group(3))
         elif match := re.match(r"^\s*New audio:\s*none\s*\((.*)\)$", line):
             decision.new_audio_reason = match.group(1)
-        if match := re.match(r"^\s*NFO update:\s*(.*?)\s*\(", line):
-            decision.nfo_name = None if match.group(1) == "none found" else match.group(1)
+        if match := re.match(r"^\s*NFO update:\s*(.*)$", line):
+            nfo_detail = match.group(1)
+            if nfo_detail.startswith("none found"):
+                decision.nfo_name = None
+            elif nfo_match := re.match(r"^(.*?)\s+\(<[^>]+> root;", nfo_detail):
+                decision.nfo_name = nfo_match.group(1)
         if match := re.match(r"^\s*Label\s+\d+:\s*(.*)$", line):
             decision.audio_labels.append(match.group(1))
         for attribute, pattern, converter in patterns:

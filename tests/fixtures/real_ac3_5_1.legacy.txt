@@ -1,0 +1,12 @@
+Analyze: /media/Fixture (1969).mkv
+  Video: h264, yuv420p, SDR
+  Video action: copy (SDR H.264 is already Apple-compatible)
+  Existing audio tracks: 1 (all retained)
+  New audio: none (no eligible conversion source)
+  Default audio: English AC3 5.1
+  Backup name: Fixture (1969) Original.mkv
+  Output name: Fixture (1969).mkv
+  Evidence file: Fixture (1969).conversion.txt
+  NFO update: Fixture (1969).nfo (<movie> root; <fileinfo> and <user_note>)
+  Label 1: English AC3 5.1
+  DRY RUN: no encode, remux, or rename performed.

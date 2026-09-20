@@ -59,6 +59,18 @@ def test_sanitized_real_dts_fixture_matches_frozen_shell_output():
     assert compare_decisions(reference, candidate) == {}
 
 
+def test_sanitized_real_ac3_fixture_with_parenthesized_nfo_matches(tmp_path: Path):
+    snapshot = load_snapshot("real_ac3_5_1.json")
+    source = tmp_path / "Fixture (1969).mkv"
+    snapshot.path = str(source)
+    (tmp_path / "Fixture (1969).nfo").write_text("<movie><title>Fixture</title></movie>")
+    legacy_output = (FIXTURES / "real_ac3_5_1.legacy.txt").read_text()
+    reference = parse_legacy_dry_run(legacy_output)
+    candidate = normalize_python_plan(build_plan(snapshot))
+    assert reference.nfo_name == "Fixture (1969).nfo"
+    assert compare_decisions(reference, candidate) == {}
+
+
 def test_comparator_reports_structured_fields():
     reference = parse_legacy_dry_run(LEGACY_DTS)
     candidate = parse_legacy_dry_run(LEGACY_DTS.replace("Video action: copy", "Video action: transcode_hevc"))

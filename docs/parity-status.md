@@ -9,6 +9,7 @@ while moving behavior out of the frozen shell converter.
 | --- | --- | --- |
 | Real H.264 SDR, DTS 5.1, six SRT subtitles, embedded JPEG cover | Read-only shell dry run and sanitized ffprobe snapshot | Structured planning fields match: video action, HDR mode, selected source, E-AC3 5.1/640 target, default track, labels, subtitles, and output paths |
 | Real HEVC HDR10, AAC 7.1, two subtitles | Read-only shell and Python plans using the same container tools | Exposed the approved AAC 7.1 policy correction recorded below |
+| Real H.264 SDR, AC3 5.1, matching movie NFO | Read-only shell dry run and sanitized ffprobe snapshot | Structured planning fields match, including the existing compatible default and a sidecar filename containing a parenthesized year |
 | Synthetic H.264 SDR, FLAC 2.0 | Frozen-shell conversion and Python planned-command execution of isolated one-second fixtures | Commands match after path normalization; both outputs validate with the original FLAC retained and a labeled/default AAC 2.0 fallback added |
 | Synthetic H.264 SDR, PCM 5.1 | Python planned-command execution | PCM remains byte-identical; E-AC3 5.1/640 is added and made default without upmixing |
 | Synthetic ASS subtitle and embedded JPEG cover | Python planned-command execution | ASS remains byte-identical, an SRT fallback is added, and the cover survives extraction and re-attachment |
@@ -116,7 +117,10 @@ unexplained porting difference.
   output validation; copied payloads are hash-checked where applicable.
 - Movie and episode NFO tests preserve their distinct XML roots and unrelated
   metadata, replace an existing evidence reference without duplication, and
-  leave installation to the transactional boundary.
+  leave installation to the transactional boundary. NFO discovery matches the
+  frozen safety rule: use a valid same-stem movie/episode sidecar, or use
+  `movie.nfo` only when the directory contains exactly one media file; never
+  write episode evidence into `tvshow.nfo`.
 
 ## Remaining gates
 

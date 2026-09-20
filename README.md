@@ -96,6 +96,9 @@ check reports the container as unhealthy until the pair is corrected.
 `GET /api/tools` reports whether scanning, base conversion, and conditional
 Dolby Vision processing are ready, with each executable path, version, and
 diagnostic error. Tool checks time out rather than holding the Settings page.
+The published image includes checksum-verified `dovi_tool` 2.3.4 binaries for
+AMD64 and ARM64. The application still starts and ordinary scans remain usable
+when that optional executable is absent from a non-container installation.
 
 ## Migration safety
 

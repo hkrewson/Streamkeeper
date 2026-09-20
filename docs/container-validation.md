@@ -27,7 +27,13 @@ that user. Container Manager should keep the library mount read-only for web
 version 1. Conversion testing belongs in a separate explicitly writable test
 mount after the CLI parity gate is accepted.
 
-`dovi_tool` is not bundled in the scan-only image. Its absence is reported on
-the Settings page and does not affect inventory, FFprobe analysis, findings, or
-dry-run planning. It must be added before containerized Dolby Vision conversion
-is enabled in a later release.
+The image bundles `dovi_tool` 2.3.4 from the project's official static Linux
+releases. AMD64 and ARM64 archives are selected by the container target
+architecture and verified against pinned SHA-256 digests before installation.
+Both binaries have been executed on their target architecture, and the ARM64
+image has passed the application health and `/api/tools` readiness checks.
+
+`dovi_tool` remains a conditional conversion dependency rather than an
+application startup dependency. Its absence from a non-container installation
+is reported on the Settings page without disabling inventory, FFprobe analysis,
+findings, or ordinary dry-run planning.

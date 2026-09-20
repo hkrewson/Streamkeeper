@@ -48,6 +48,12 @@ the excluded path, reason, and matching pattern for review in the scan detail.
 
 ## 4. Dolby Vision tooling
 
+Status: checksum-pinned `dovi_tool` 2.3.4 binaries are packaged for AMD64 and
+ARM64. Both architecture-specific releases execute successfully, and the ARM64
+container reports Dolby Vision readiness through the application API. Profile
+and compatibility-ID validation against authorized media samples remains part
+of the conversion parity gate.
+
 - Package and report a verified `dovi_tool` for AMD64 and ARM64.
 - Keep ordinary scanning operational when the optional tool is unavailable.
 - Validate Dolby Vision profiles and compatibility IDs with authorized samples.
@@ -73,6 +79,7 @@ the excluded path, reason, and matching pattern for review in the scan detail.
 - Synology successfully runs the published multi-architecture image.
 - A 2,729-file library scan completed and a second scan reused 2,725 successful
   probes while retrying four failed files.
-- FFmpeg and FFprobe are available in the container; `dovi_tool` remains absent.
+- FFmpeg, FFprobe, and checksum-verified `dovi_tool` 2.3.4 are available in the
+  container.
 - UTC timestamps are retained in storage and displayed using the configured
   browser, UTC, or fixed DST-aware time zone.

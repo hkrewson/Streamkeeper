@@ -64,8 +64,10 @@ part of the conversion parity gate.
 Status: controlled synthetic conversion coverage and a normalized comparison
 tool are in place. Completed web scans now preserve and export immutable,
 CLI-compatible snapshots, removing direct database access from the pending
-full-library shadow review. Authorized Dolby Vision, HDR10+, and bitmap
-subtitle output samples plus off-library playback approval remain required.
+full-library shadow review. An authorized HDR10+ excerpt has confirmed removal
+of dynamic metadata with static HDR10 metadata preserved. Dolby Vision and
+bitmap-subtitle output samples plus off-library playback approval remain
+required.
 
 - Complete differential dry-run comparison against the frozen shell reference.
 - Extend controlled output coverage for Dolby Vision, HDR10+, and bitmap

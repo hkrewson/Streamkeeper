@@ -83,6 +83,30 @@ def test_sanitized_real_dolby_vision_truehd_bitmap_fixture_matches(tmp_path: Pat
     assert compare_decisions(reference, candidate) == {}
 
 
+def test_sanitized_real_hdr10plus_fixture_records_approved_policy_correction(tmp_path: Path):
+    snapshot = load_snapshot("real_hdr10plus_eac3.json")
+    source = tmp_path / "Fixture (2021).mkv"
+    snapshot.path = str(source)
+    (tmp_path / "Fixture (2021).nfo").write_text("<movie><title>Fixture</title></movie>")
+    reference = parse_legacy_dry_run(
+        (FIXTURES / "real_hdr10plus_eac3.legacy.txt").read_text()
+    )
+    plan = build_plan(snapshot)
+    candidate = normalize_python_plan(plan)
+
+    assert compare_decisions(reference, candidate) == {
+        "video_action": {"reference": "copy", "candidate": "strip_hdr10plus"},
+        "video_reason": {
+            "reference": "already Apple-compatible",
+            "candidate": "retain HDR10 base and remove HDR10+ metadata",
+        },
+        "hdr_mode": {"reference": "HDR10", "candidate": "HDR10 + HDR10+"},
+    }
+    dovi_command = next(command for command in plan.normalized_commands if command[0] == "dovi_tool")
+    assert dovi_command[1:3] == ["--drop-hdr10plus", "convert"]
+    assert plan.required_tools == ["ffmpeg", "ffprobe", "dovi_tool"]
+
+
 def test_comparator_reports_structured_fields():
     reference = parse_legacy_dry_run(LEGACY_DTS)
     candidate = parse_legacy_dry_run(LEGACY_DTS.replace("Video action: copy", "Video action: transcode_hevc"))

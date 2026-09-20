@@ -11,6 +11,7 @@ while moving behavior out of the frozen shell converter.
 | Real HEVC HDR10, AAC 7.1, two subtitles | Read-only shell and Python plans using the same container tools | Exposed the approved AAC 7.1 policy correction recorded below |
 | Real H.264 SDR, AC3 5.1, matching movie NFO | Read-only shell dry run and sanitized ffprobe snapshot | Structured planning fields match, including the existing compatible default and a sidecar filename containing a parenthesized year |
 | Real HEVC Dolby Vision 7, TrueHD Atmos 7.1, eight additional audio streams, 13 PGS subtitles | Read-only shell dry run and sanitized ffprobe snapshot | Structured planning fields match for profile/compatibility identification, metadata-only DV 8.1 conversion, best-source E-AC3 fallback, all audio labels/defaults, bitmap preservation warning, and NFO path |
+| Real HEVC HDR10+, E-AC3 5.1, two SRT subtitles, four embedded JPEG covers | Read-only shell dry run, sanitized ffprobe snapshot, and a three-second off-library bitstream excerpt | Python identifies frame-level HDR10+ that the shell reports only as HDR10; `dovi_tool --drop-hdr10plus` removes dynamic metadata while preserving HDR10 mastering-display and content-light metadata |
 | Synthetic H.264 SDR, FLAC 2.0 | Frozen-shell conversion and Python planned-command execution of isolated one-second fixtures | Commands match after path normalization; both outputs validate with the original FLAC retained and a labeled/default AAC 2.0 fallback added |
 | Synthetic H.264 SDR, PCM 5.1 | Python planned-command execution | PCM remains byte-identical; E-AC3 5.1/640 is added and made default without upmixing |
 | Synthetic ASS subtitle and embedded JPEG cover | Python planned-command execution | ASS remains byte-identical, an SRT fallback is added, and the cover survives extraction and re-attachment |
@@ -35,6 +36,14 @@ new stream default. Higher-quality 6+ channel sources still outrank AAC 7.1.
 AAC 5.1 and AAC 2.0 remain accepted compatibility targets and are not converted
 merely because they are AAC. This is an intentional correction rather than an
 unexplained porting difference.
+
+The frozen shell detects HDR mode from stream-level color signaling and can
+therefore report an HDR10+ source as ordinary HDR10. Python supplements the
+stream probe with decoded-frame side data. When SMPTE ST 2094-40 metadata is
+present, it preserves the HEVC base layer and static HDR10 metadata while
+removing only HDR10+ metadata. This intentional correction implements the
+approved requirement to normalize non-native HDR to an Apple-compatible native
+HDR base.
 
 ## Completed migration work
 
@@ -125,8 +134,8 @@ unexplained porting difference.
 
 ## Remaining gates
 
-- Compare HDR10+ plans and outputs with authorized samples, and validate the
-  planned Dolby Vision 7 transformation against an authorized output copy.
+- Validate the planned Dolby Vision 7 transformation against an authorized
+  output copy.
 - Extend controlled output coverage to Dolby Vision, HDR10+ normalization, and
   bitmap subtitles. PGS/VobSub requires an authorized sample because FFmpeg
   cannot reliably synthesize those tracks from text.

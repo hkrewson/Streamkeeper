@@ -1,0 +1,13 @@
+Analyze: /media/Fixture (2021).mkv
+  Video: hevc, yuv420p10le, HDR10
+  Video action: copy (already Apple-compatible)
+  Existing audio tracks: 1 (all retained)
+  Existing subtitle tracks: 2
+  New audio: none (no eligible conversion source)
+  Default audio: English E-AC3 5.1
+  Backup name: Fixture (2021) Original.mkv
+  Output name: Fixture (2021).mkv
+  Evidence file: Fixture (2021).conversion.txt
+  NFO update: Fixture (2021).nfo (<movie> root; <fileinfo> and <user_note>)
+  Label 1: English E-AC3 5.1
+  DRY RUN: no encode, remux, or rename performed.

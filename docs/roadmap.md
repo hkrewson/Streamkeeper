@@ -71,9 +71,14 @@ confirmed metadata normalization, frame preservation, and the full remux path.
 Real PGS and VobSub payload preservation are also hash-verified. Full-library
 shadow review and off-library playback approval remain required.
 
+The stored full-library baseline has completed a policy-and-planner shadow
+pass: 2,742 classifications match, 2,737 successful probes build plans without
+exceptions, and the five existing probe failures are unchanged. A fresh scan
+from the current deployed image remains the final catalog comparison.
+
 - Complete differential dry-run comparison against the frozen shell reference.
-- Run a read-only full-library shadow comparison and review classification
-  differences.
+- Run a fresh read-only scan from the current deployed image and compare its
+  exported snapshot with the accepted baseline.
 - Complete selected off-library playback tests before unlocking standalone CLI
   conversion. Web conversion remains a later, separately approved release.
 

@@ -122,6 +122,12 @@ HDR base.
   asset, probe, and finding decisions used in that run. Completed scans can be
   exported from the Scans inspector for offline shadow comparison; the latest
   pre-migration scan can also be reconstructed after an upgrade.
+- The latest complete pre-migration catalog has been shadow-reclassified under
+  the current policy: all 2,742 asset classifications match exactly. Its 2,737
+  successful probes also build complete conversion plans without exceptions;
+  five prior probe failures remain unchanged. One plan is intentionally
+  non-executable because its MP4 contains audio, data, and cover art but no
+  playable video stream.
 - Normalized command planning covers data-stream omission, MOV_TEXT conversion,
   ASS/SSA fallback generation, source dispositions, and cover extraction and
   re-attachment. Each branch now has controlled command execution and semantic
@@ -143,7 +149,7 @@ HDR base.
 
 ## Remaining gates
 
-- Run the Python scanner and planner in read-only shadow mode across the full
-  library and review unexplained classification differences.
+- Repeat fresh discovery and probing with the current deployed image, then
+  compare its exported snapshot with the accepted 2,742-asset baseline.
 - Complete selected playback checks outside Plex before unlocking standalone
   CLI conversion.
